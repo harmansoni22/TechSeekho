@@ -1,0 +1,31 @@
+button.button,
+Button.button {
+  overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.165, 0.84, 0.44, 1);
+  position: relative;
+}
+
+button.button::after,
+Button.button::after {
+  content: "";
+  background: #464646;
+  overflow: hidden;
+  width: 100%;
+  transform: scaleX(0);
+  position: absolute;
+  pointer-events: none;
+  /* position: relative; */
+  top: 0;
+  left: 0;
+  height: 100%;
+  z-index: -1;
+  transition: transform 0.3s ease-in;
+  transform-origin: right;
+}
+
+button.button:hover::after,
+Button.button:hover::after {
+  /* width: 100%; */
+  transform: scaleX(1);
+  transform-origin: left;
+}

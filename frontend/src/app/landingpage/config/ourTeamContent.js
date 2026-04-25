@@ -1,0 +1,32 @@
+export const OUR_TEAM_MEMBERS = [
+  {
+    name: "Aarav S.",
+    title: "Frontend Mentor",
+    handle: "aarav_ui",
+    status: "Reviewing Projects",
+    avatarUrl: "/download.webp",
+    miniAvatarUrl: "/download.webp",
+    iconUrl: "/download.png",
+    grainUrl: "/grain.webp",
+  },
+  {
+    name: "Meera K.",
+    title: "Backend Mentor",
+    handle: "meera_api",
+    status: "In Mentor Session",
+    avatarUrl: "/download.webp",
+    miniAvatarUrl: "/download.webp",
+    iconUrl: "/download.png",
+    grainUrl: "/grain.webp",
+  },
+  {
+    name: "Rohit V.",
+    title: "AI Mentor",
+    handle: "rohit_ai",
+    status: "Online",
+    avatarUrl: "/download.webp",
+    miniAvatarUrl: "/download.webp",
+    iconUrl: "/download.png",
+    grainUrl: "/grain.webp",
+  },
+];
