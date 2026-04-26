@@ -29,7 +29,6 @@ TechSeekhoApp/
   - `GET /health`
   - `GET /courses`
   - `GET /courses/:slug`
-  - `POST /ai/chat`
 - Uses Hugging Face hosted inference for landing-page assistant replies.
 - Grounds AI answers with TechSeekho course catalog data in the backend prompt.
 - Resets landing-page chat UI state when the popup closes instead of persisting history.
