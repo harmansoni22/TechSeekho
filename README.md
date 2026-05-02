@@ -29,7 +29,6 @@ TechSeekhoApp/
   - `GET /health`
   - `GET /courses`
   - `GET /courses/:slug`
-  - `POST /ai/chat`
 - Uses Hugging Face hosted inference for landing-page assistant replies.
 - Grounds AI answers with TechSeekho course catalog data in the backend prompt.
 - Resets landing-page chat UI state when the popup closes instead of persisting history.
@@ -64,48 +63,6 @@ npm run dev
 cd backend
 npm run dev
 ```
-
-## Environment Setup
-
-### Backend
-
-Create `backend/.env` with values such as:
-
-```env
-PORT=4000
-NODE_ENV=development
-CORS_ORIGINS=http://localhost:3000
-CORS_ALLOW_NO_ORIGIN=true
-JSON_LIMIT=100kb
-TRUST_PROXY=false
-EXPOSE_ERROR_DETAILS=true
-DATABASE_URL=postgresql://...
-HF_TOKEN=hf_...
-HF_MODEL=Qwen/Qwen2.5-7B-Instruct
-HF_PROVIDER=together
-```
-
-Notes:
-
-- `HF_TOKEN` is required for the AI assistant.
-- `HF_MODEL` and `HF_PROVIDER` default to a hosted-safe setup in code.
-- `src/config/env.js` loads `backend/.env` by absolute path, which avoids working-directory issues when starting the server from different locations.
-
-### Frontend
-
-Set `NEXT_PUBLIC_API_URL` so the frontend knows where the backend lives:
-
-```env
-NEXT_PUBLIC_API_URL=http://localhost:4000
-```
-
-## Recommended Local Startup Order
-
-1. Start PostgreSQL and make sure `DATABASE_URL` is valid.
-2. Start the backend.
-3. Start the frontend.
-4. Open `http://localhost:3000`.
-5. Test `/landingpage` and the AI popup.
 
 ## High-Level Request Flow
 
