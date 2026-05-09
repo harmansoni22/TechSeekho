@@ -1,210 +1,214 @@
 export const SERVICES_METADATA = {
-  title: "Services | TechSeekho",
-  description:
-    "Choose how you want to learn: cohorts, mentorship, project support, and career help.",
-  hero: {
-    headline: "Pick the support you need to grow in tech.",
-    sub: "Start with a clear path, build real work, and get practical feedback from mentors.",
-    ctaPrimary: "Explore Courses",
-    ctaSecondary: "Talk To Our Team",
-  },
+    title: "For Schools | Techseekho",
+    description:
+        "Partner with Techseekho to bring AI, Robotics, Drone Technology and IoT labs to your campus. Complete lab setup, trainer deployment, and NEP 2020 curriculum integration.",
+    hero: {
+        headline: "A Complete Technology Lab at Your Campus",
+        sub: "Everything delivered to your campus. No capital investment required. Full AI, Robotics, Drone and IoT labs deployed — all equipment included.",
+        ctaPrimary: "Partner Your School",
+        ctaSecondary: "Contact Us",
+    },
 };
 
 export const SERVICE_FLOW = [
-  {
-    id: "01",
-    title: "Choose your path",
-    detail: "Pick a service based on your goal and current level.",
-  },
-  {
-    id: "02",
-    title: "Build with guidance",
-    detail: "Follow tasks and projects with mentor support.",
-  },
-  {
-    id: "03",
-    title: "Improve faster",
-    detail: "Get review that helps you fix weak spots early.",
-  },
-  {
-    id: "04",
-    title: "Ship your work",
-    detail: "Turn your output into portfolio proof and interview confidence.",
-  },
+    {
+        id: "01",
+        title: "Technology Labs",
+        detail: "Full AI, Robotics, Drone and IoT labs deployed at your campus — all equipment included.",
+    },
+    {
+        id: "02",
+        title: "Expert Trainers",
+        detail: "Certified technology educators deliver classes at your school on your schedule.",
+    },
+    {
+        id: "03",
+        title: "NEP 2020 Curriculum",
+        detail: "Aligned programs that integrate into your existing timetable seamlessly.",
+    },
+    {
+        id: "04",
+        title: "Competitions",
+        detail: "Students participate in state and national technology championships.",
+    },
 ];
 
 export const SERVICES = [
-  {
-    id: 1,
-    icon: "LC",
-    title: "Live Cohorts",
-    shortDesc: "Structured learning with mentors",
-    fullDesc:
-      "Join live classes with clear weekly goals. Learn concepts, build tasks, and stay consistent with mentor guidance.",
-    features: [
-      "Live weekly sessions",
-      "Project-based assignments",
-      "Peer learning groups",
-      "Capstone guidance",
-      "Completion certificate",
-    ],
-    color: "#7dd3fc",
-  },
-  {
-    id: 2,
-    icon: "M1",
-    title: "1:1 Mentorship",
-    shortDesc: "Personal guidance for your journey",
-    fullDesc:
-      "Work directly with a mentor on your code, roadmap, and career direction. Great when you need focused support.",
-    features: [
-      "Weekly mentor calls",
-      "Code and architecture review",
-      "Resume and profile feedback",
-      "Interview preparation",
-    ],
-    color: "#a5b4fc",
-  },
-  {
-    id: 3,
-    icon: "PT",
-    title: "Project Track",
-    shortDesc: "Build strong portfolio projects",
-    fullDesc:
-      "Take projects from idea to deployment with practical review at every stage, including planning, coding, and polish.",
-    features: [
-      "Project planning support",
-      "Code quality reviews",
-      "Deployment guidance",
-      "Portfolio storytelling",
-    ],
-    color: "#fbbf24",
-  },
-  {
-    id: 4,
-    icon: "CS",
-    title: "Career Services",
-    shortDesc: "Get ready for interviews and offers",
-    fullDesc:
-      "Prepare for job applications with mock interviews, profile updates, and practical advice on how to present your work.",
-    features: [
-      "Resume improvement",
-      "Mock interview sessions",
-      "Role-based preparation",
-      "Offer and salary guidance",
-    ],
-    color: "#6ee7b7",
-  },
+    {
+        id: 1,
+        icon: "TL",
+        title: "Technology Labs",
+        shortDesc: "Full AI, Robotics, Drone and IoT labs",
+        fullDesc:
+            "Full AI, Robotics, Drone and IoT labs deployed at your campus — all equipment included. No capital investment required.",
+        features: [
+            "AI Lab setup",
+            "Robotics equipment",
+            "Drone technology",
+            "IoT devices",
+            "Maintenance support",
+        ],
+        color: "#7dd3fc",
+    },
+    {
+        id: 2,
+        icon: "ET",
+        title: "Expert Trainers",
+        shortDesc: "Certified technology educators",
+        fullDesc:
+            "Certified technology educators deliver classes at your school on your schedule. We handle everything.",
+        features: [
+            "Trained instructors",
+            "Regular classes",
+            "Student assessment",
+            "Progress reports",
+            "Parent meetings",
+        ],
+        color: "#a5b4fc",
+    },
+    {
+        id: 3,
+        icon: "NC",
+        title: "NEP 2020 Curriculum",
+        shortDesc: "Nationally certified programs",
+        fullDesc:
+            "Aligned programs that integrate into your existing timetable seamlessly. Industry certificates, nationally recognised.",
+        features: [
+            "NEP 2020 aligned",
+            "Structured curriculum",
+            "Assessment framework",
+            "Certificate issuance",
+            "Career mapping",
+        ],
+        color: "#fbbf24",
+    },
+    {
+        id: 4,
+        icon: "TT",
+        title: "Teacher Training",
+        shortDesc: "We upskill your faculty",
+        fullDesc:
+            "We upskill your faculty in AI and technology alongside students. Build internal capability.",
+        features: [
+            "Faculty training",
+            "Resource materials",
+            "Ongoing support",
+            "Best practices",
+            "Certification",
+        ],
+        color: "#6ee7b7",
+    },
 ];
 
 export const PRICING_TIERS = [
-  {
-    id: "starter",
-    title: "Starter",
-    price: "Free",
-    period: "",
-    features: [
-      "Community access",
-      "Starter resources",
-      "Recorded learning samples",
-    ],
-    cta: "Start Free",
-  },
-  {
-    id: "pro",
-    title: "Pro",
-    price: "$99",
-    period: "/month",
-    features: [
-      "Full cohort access",
-      "Mentor review loops",
-      "Project track support",
-      "Career prep sessions",
-    ],
-    cta: "Choose Pro",
-    highlight: true,
-  },
-  {
-    id: "premium",
-    title: "Premium",
-    price: "$249",
-    period: "/month",
-    features: [
-      "Dedicated 1:1 mentorship",
-      "Priority review turnaround",
-      "Advanced interview prep",
-      "Personal growth roadmap",
-    ],
-    cta: "Choose Premium",
-  },
+    {
+        id: "basic",
+        title: "Basic",
+        price: "Custom",
+        period: "",
+        features: [
+            "Single technology lab",
+            "Basic equipment",
+            "Part-time trainer",
+            "Quarterly reports",
+        ],
+        cta: "Get Quote",
+    },
+    {
+        id: "standard",
+        title: "Standard",
+        price: "Custom",
+        period: "",
+        features: [
+            "Full AI & Robotics lab",
+            "Complete equipment",
+            "Dedicated trainer",
+            "Monthly reports",
+            "Competition support",
+        ],
+        cta: "Get Quote",
+        highlight: true,
+    },
+    {
+        id: "premium",
+        title: "Premium",
+        price: "Custom",
+        period: "",
+        features: [
+            "All technology labs",
+            "Drone & IoT included",
+            "Full-time trainer",
+            "Weekly reports",
+            "State/National competitions",
+            "Teacher training",
+        ],
+        cta: "Get Quote",
+    },
 ];
 
 export const TESTIMONIALS = [
-  {
-    name: "Aisha Khan",
-    role: "Frontend Engineer",
-    quote:
-      "The roadmap was clear and the mentor feedback was practical. I felt confident in interviews.",
-  },
-  {
-    name: "Ravi Patel",
-    role: "ML Engineer",
-    quote:
-      "Project track helped me move from theory to real execution. I learned how to ship properly.",
-  },
-  {
-    name: "Sana Gupta",
-    role: "Fullstack Developer",
-    quote:
-      "Career support made a big difference. My profile and interview approach improved a lot.",
-  },
+    {
+        name: "Rajesh Patel",
+        role: "Principal · Bhopal",
+        quote: "We integrated Techseekho's AI program. Students now build real AI projects — placing us among MP's most forward-thinking institutions.",
+    },
+    {
+        name: "Amit Joshi",
+        role: "School Owner · Indore",
+        quote: "Techseekho brought 60+ new enrollments because parents actively chose our school for the technology programs.",
+    },
+    {
+        name: "Dr. Meena Tiwari",
+        role: "Education Officer · MP Govt",
+        quote: "Our board visited the Techseekho lab and was immediately convinced. This is exactly what MP schools need.",
+    },
 ];
 
 export const WHY_CHOOSE_SECTION = [
-  {
-    title: "Mentors who review real work",
-    desc: "You get practical feedback, not generic comments.",
-  },
-  {
-    title: "Learning by building",
-    desc: "Every track includes hands-on tasks and projects.",
-  },
-  {
-    title: "Clear next steps",
-    desc: "You always know what to do next in your journey.",
-  },
-  {
-    title: "Career-focused support",
-    desc: "We prepare you for interviews and real job expectations.",
-  },
+    {
+        title: "No capital investment",
+        desc: "Everything delivered to your campus. We handle all costs.",
+    },
+    {
+        title: "NEP 2020 aligned",
+        desc: "Curriculum that integrates seamlessly with your existing timetable.",
+    },
+    {
+        title: "Proven results",
+        desc: "120+ schools partnered across MP with 4.9★ satisfaction rating.",
+    },
+    {
+        title: "Complete support",
+        desc: "Equipment, trainers, curriculum, and competitions — all included.",
+    },
 ];
 
 export const FAQ_ITEMS = [
-  {
-    q: "How long does a cohort run?",
-    a: "Most cohorts run for 8 to 12 weeks, based on the track.",
-  },
-  {
-    q: "Can I upgrade my plan later?",
-    a: "Yes. You can upgrade any time as your needs change.",
-  },
-  {
-    q: "Do I get project feedback?",
-    a: "Yes. Feedback is a core part of all paid plans.",
-  },
-  {
-    q: "Will I get help with interviews?",
-    a: "Yes. Career Services includes interview practice and profile improvements.",
-  },
+    {
+        q: "How long does setup take?",
+        a: "Most schools are up and running within 2-4 weeks of partnership.",
+    },
+    {
+        q: "What age groups do you serve?",
+        a: "We serve students from Class 5 to Class 12 (Ages 10-18).",
+    },
+    {
+        q: "Do we need special rooms?",
+        a: "We can work with existing classrooms or provide dedicated lab space recommendations.",
+    },
+    {
+        q: "How are students assessed?",
+        a: "We provide monthly progress reports and project portfolios for every student.",
+    },
 ];
 
 export const SERVICES_CTA = {
-  eyebrow: "Ready To Start",
-  title: "Pick a service and begin this week.",
-  description:
-    "Choose the format that fits your goal and let us guide you step by step.",
-  primaryButtonLabel: "Explore Courses",
-  primaryButtonHref: "/landingpage/Pages/courses",
-  secondaryButtonLabel: "Contact Us",
-  secondaryButtonHref: "/landingpage/Pages/contact",
+    eyebrow: "Ready To Start",
+    title: "Pick a service and begin this week.",
+    description:
+        "Choose the format that fits your goal and let us guide you step by step.",
+    primaryButtonLabel: "Explore Courses",
+    primaryButtonHref: "/landingpage/Pages/courses",
+    secondaryButtonLabel: "Contact Us",
+    secondaryButtonHref: "/landingpage/Pages/contact",
 };
