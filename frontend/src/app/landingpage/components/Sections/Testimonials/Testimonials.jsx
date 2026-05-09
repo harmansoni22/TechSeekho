@@ -6,280 +6,294 @@ import { TESTIMONIALS_CONTENT } from "@/app/landingpage/config/landingContent";
 import GradientText from "../../Effects/TextEffects/GradientText";
 
 const Testimonial = () => {
-  const sliderRef = useRef(null);
-  const momentumTweenRef = useRef(null);
-  const metricsRef = useRef({
-    origin: 0,
-    cardWidth: 0,
-    cardSpan: 0,
-  });
-  const scrollRafRef = useRef(null);
-  const velocityRef = useRef({
-    lastX: 0,
-    lastTime: 0,
-    velocity: 0,
-  });
-  const [visibleDotIndexes, setVisibleDotIndexes] = useState([0]);
-  const dragStateRef = useRef({
-    active: false,
-    moved: false,
-    pointerId: null,
-    startX: 0,
-    startScrollLeft: 0,
-  });
-
-  const measureSliderMetrics = useCallback(() => {
-    const slider = sliderRef.current;
-    if (!slider) return;
-
-    const firstCard = slider.querySelector("[data-testimonial-card]");
-    if (!firstCard) return;
-
-    const cardWidth = firstCard.offsetWidth;
-    const styles = window.getComputedStyle(slider);
-    const gap = Number.parseFloat(styles.columnGap || styles.gap || "0") || 0;
-    const cardSpan = cardWidth + gap;
-    const origin = firstCard.offsetLeft;
-
-    metricsRef.current = {
-      origin,
-      cardWidth,
-      cardSpan,
-    };
-  }, []);
-
-  const getTargetScrollForIndex = (index) => {
-    const slider = sliderRef.current;
-    if (!slider) return 0;
-
-    const count = TESTIMONIALS_CONTENT.items.length;
-    const boundedIndex = Math.max(0, Math.min(count - 1, index));
-    const { origin, cardWidth, cardSpan } = metricsRef.current;
-    if (!cardWidth || !cardSpan) return 0;
-
-    const target =
-      origin + boundedIndex * cardSpan - (slider.clientWidth - cardWidth) / 2;
-    const maxScroll = Math.max(0, slider.scrollWidth - slider.clientWidth);
-    return Math.max(0, Math.min(maxScroll, target));
-  };
-
-  const updateVisibleDotIndexes = useCallback(() => {
-    const slider = sliderRef.current;
-    if (!slider) return;
-
-    const { origin, cardWidth, cardSpan } = metricsRef.current;
-    const count = TESTIMONIALS_CONTENT.items.length;
-    if (!cardWidth || !cardSpan || !count) return;
-
-    const viewportLeft = slider.scrollLeft;
-    const viewportRight = viewportLeft + slider.clientWidth;
-    const firstCenterVisible = Math.max(
-      0,
-      Math.ceil((viewportLeft - (origin + cardWidth / 2)) / cardSpan),
-    );
-    const lastCenterVisible = Math.min(
-      count - 1,
-      Math.floor((viewportRight - (origin + cardWidth / 2)) / cardSpan),
-    );
-
-    const nextVisibleIndexes = [];
-    for (let i = firstCenterVisible; i <= lastCenterVisible; i += 1) {
-      nextVisibleIndexes.push(i);
-    }
-
-    if (!nextVisibleIndexes.length) {
-      const centerIndex = Math.round(
-        (viewportLeft + slider.clientWidth / 2 - (origin + cardWidth / 2)) /
-          cardSpan,
-      );
-      nextVisibleIndexes.push(Math.max(0, Math.min(count - 1, centerIndex)));
-    }
-
-    setVisibleDotIndexes((prev) => {
-      if (
-        prev.length === nextVisibleIndexes.length &&
-        prev.every((value, idx) => value === nextVisibleIndexes[idx])
-      ) {
-        return prev;
-      }
-      return nextVisibleIndexes;
+    const sliderRef = useRef(null);
+    const momentumTweenRef = useRef(null);
+    const metricsRef = useRef({
+        origin: 0,
+        cardWidth: 0,
+        cardSpan: 0,
     });
-  }, []);
-
-  useEffect(() => {
-    const slider = sliderRef.current;
-    if (!slider) return;
-
-    measureSliderMetrics();
-    updateVisibleDotIndexes();
-
-    const onScroll = () => {
-      if (scrollRafRef.current !== null) return;
-      scrollRafRef.current = window.requestAnimationFrame(() => {
-        scrollRafRef.current = null;
-        updateVisibleDotIndexes();
-      });
-    };
-
-    const onResize = () => {
-      measureSliderMetrics();
-      onScroll();
-    };
-
-    slider.addEventListener("scroll", onScroll, { passive: true });
-    window.addEventListener("resize", onResize);
-
-    return () => {
-      slider.removeEventListener("scroll", onScroll);
-      window.removeEventListener("resize", onResize);
-      if (scrollRafRef.current !== null) {
-        window.cancelAnimationFrame(scrollRafRef.current);
-      }
-      momentumTweenRef.current?.kill();
-      gsap.killTweensOf(slider);
-      document.body.style.removeProperty("user-select");
-      document.body.style.removeProperty("cursor");
-    };
-  }, [measureSliderMetrics, updateVisibleDotIndexes]);
-
-  const setSnapMode = (mode) => {
-    const slider = sliderRef.current;
-    if (!slider) return;
-    slider.style.scrollSnapType = mode;
-  };
-
-  const snapToNearestCard = () => {
-    const slider = sliderRef.current;
-    if (!slider) return;
-    const { origin, cardWidth, cardSpan } = metricsRef.current;
-    if (!cardWidth || !cardSpan) return;
-
-    const centerIndex = Math.round(
-      (slider.scrollLeft + slider.clientWidth / 2 - (origin + cardWidth / 2)) /
-        cardSpan,
-    );
-    const targetScroll = getTargetScrollForIndex(centerIndex);
-
-    setSnapMode("none");
-    gsap.to(slider, {
-      scrollLeft: targetScroll,
-      duration: 0.34,
-      ease: "power3.out",
-      onComplete: () => setSnapMode("x proximity"),
+    const scrollRafRef = useRef(null);
+    const velocityRef = useRef({
+        lastX: 0,
+        lastTime: 0,
+        velocity: 0,
     });
-  };
+    const [visibleDotIndexes, setVisibleDotIndexes] = useState([0]);
+    const dragStateRef = useRef({
+        active: false,
+        moved: false,
+        pointerId: null,
+        startX: 0,
+        startScrollLeft: 0,
+    });
 
-  const stopDragging = () => {
-    const slider = sliderRef.current;
-    const dragState = dragStateRef.current;
+    const measureSliderMetrics = useCallback(() => {
+        const slider = sliderRef.current;
+        if (!slider) return;
 
-    if (!dragState.active) return;
+        const firstCard = slider.querySelector("[data-testimonial-card]");
+        if (!firstCard) return;
 
-    if (
-      slider &&
-      dragState.pointerId !== null &&
-      slider.hasPointerCapture?.(dragState.pointerId)
-    ) {
-      slider.releasePointerCapture(dragState.pointerId);
-    }
+        const cardWidth = firstCard.offsetWidth;
+        const styles = window.getComputedStyle(slider);
+        const gap =
+            Number.parseFloat(styles.columnGap || styles.gap || "0") || 0;
+        const cardSpan = cardWidth + gap;
+        const origin = firstCard.offsetLeft;
 
-    dragState.active = false;
-    dragState.pointerId = null;
+        metricsRef.current = {
+            origin,
+            cardWidth,
+            cardSpan,
+        };
+    }, []);
 
-    document.body.style.removeProperty("user-select");
-    document.body.style.removeProperty("cursor");
+    const getTargetScrollForIndex = (index) => {
+        const slider = sliderRef.current;
+        if (!slider) return 0;
 
-    if (dragState.moved && slider) {
-      const maxScroll = Math.max(0, slider.scrollWidth - slider.clientWidth);
-      const momentumDistance = velocityRef.current.velocity * -260;
-      const projected = Math.min(
-        maxScroll,
-        Math.max(0, slider.scrollLeft + momentumDistance),
-      );
-      const shouldApplyMomentum = Math.abs(velocityRef.current.velocity) > 0.05;
+        const count = TESTIMONIALS_CONTENT.items.length;
+        const boundedIndex = Math.max(0, Math.min(count - 1, index));
+        const { origin, cardWidth, cardSpan } = metricsRef.current;
+        if (!cardWidth || !cardSpan) return 0;
 
-      if (shouldApplyMomentum) {
-        momentumTweenRef.current = gsap.to(slider, {
-          scrollLeft: projected,
-          duration: 0.28,
-          ease: "power2.out",
-          onComplete: snapToNearestCard,
+        const target =
+            origin +
+            boundedIndex * cardSpan -
+            (slider.clientWidth - cardWidth) / 2;
+        const maxScroll = Math.max(0, slider.scrollWidth - slider.clientWidth);
+        return Math.max(0, Math.min(maxScroll, target));
+    };
+
+    const updateVisibleDotIndexes = useCallback(() => {
+        const slider = sliderRef.current;
+        if (!slider) return;
+
+        const { origin, cardWidth, cardSpan } = metricsRef.current;
+        const count = TESTIMONIALS_CONTENT.items.length;
+        if (!cardWidth || !cardSpan || !count) return;
+
+        const viewportLeft = slider.scrollLeft;
+        const viewportRight = viewportLeft + slider.clientWidth;
+        const firstCenterVisible = Math.max(
+            0,
+            Math.ceil((viewportLeft - (origin + cardWidth / 2)) / cardSpan),
+        );
+        const lastCenterVisible = Math.min(
+            count - 1,
+            Math.floor((viewportRight - (origin + cardWidth / 2)) / cardSpan),
+        );
+
+        const nextVisibleIndexes = [];
+        for (let i = firstCenterVisible; i <= lastCenterVisible; i += 1) {
+            nextVisibleIndexes.push(i);
+        }
+
+        if (!nextVisibleIndexes.length) {
+            const centerIndex = Math.round(
+                (viewportLeft +
+                    slider.clientWidth / 2 -
+                    (origin + cardWidth / 2)) /
+                    cardSpan,
+            );
+            nextVisibleIndexes.push(
+                Math.max(0, Math.min(count - 1, centerIndex)),
+            );
+        }
+
+        setVisibleDotIndexes((prev) => {
+            if (
+                prev.length === nextVisibleIndexes.length &&
+                prev.every((value, idx) => value === nextVisibleIndexes[idx])
+            ) {
+                return prev;
+            }
+            return nextVisibleIndexes;
         });
-      } else {
-        snapToNearestCard();
-      }
-    } else {
-      setSnapMode("x proximity");
-    }
+    }, []);
 
-    window.setTimeout(() => {
-      dragState.moved = false;
-    }, 0);
-  };
+    useEffect(() => {
+        const slider = sliderRef.current;
+        if (!slider) return;
 
-  const handlePointerDown = (event) => {
-    if (event.pointerType === "mouse" && event.button !== 0) return;
+        measureSliderMetrics();
+        updateVisibleDotIndexes();
 
-    const slider = sliderRef.current;
-    if (!slider) return;
+        const onScroll = () => {
+            if (scrollRafRef.current !== null) return;
+            scrollRafRef.current = window.requestAnimationFrame(() => {
+                scrollRafRef.current = null;
+                updateVisibleDotIndexes();
+            });
+        };
 
-    dragStateRef.current.active = true;
-    dragStateRef.current.moved = false;
-    dragStateRef.current.pointerId = event.pointerId;
-    dragStateRef.current.startX = event.clientX;
-    dragStateRef.current.startScrollLeft = slider.scrollLeft;
-    velocityRef.current.lastX = event.clientX;
-    velocityRef.current.lastTime = performance.now();
-    velocityRef.current.velocity = 0;
+        const onResize = () => {
+            measureSliderMetrics();
+            onScroll();
+        };
 
-    momentumTweenRef.current?.kill();
-    setSnapMode("none");
-    slider.setPointerCapture?.(event.pointerId);
-    document.body.style.userSelect = "none";
-    document.body.style.cursor = "grabbing";
-  };
+        slider.addEventListener("scroll", onScroll, { passive: true });
+        window.addEventListener("resize", onResize);
 
-  const handlePointerMove = (event) => {
-    const slider = sliderRef.current;
-    const dragState = dragStateRef.current;
+        return () => {
+            slider.removeEventListener("scroll", onScroll);
+            window.removeEventListener("resize", onResize);
+            if (scrollRafRef.current !== null) {
+                window.cancelAnimationFrame(scrollRafRef.current);
+            }
+            momentumTweenRef.current?.kill();
+            gsap.killTweensOf(slider);
+            document.body.style.removeProperty("user-select");
+            document.body.style.removeProperty("cursor");
+        };
+    }, [measureSliderMetrics, updateVisibleDotIndexes]);
 
-    if (!slider || !dragState.active) return;
+    const setSnapMode = (mode) => {
+        const slider = sliderRef.current;
+        if (!slider) return;
+        slider.style.scrollSnapType = mode;
+    };
 
-    const deltaX = event.clientX - dragState.startX;
-    if (Math.abs(deltaX) > 8) {
-      dragState.moved = true;
-    }
+    const snapToNearestCard = () => {
+        const slider = sliderRef.current;
+        if (!slider) return;
+        const { origin, cardWidth, cardSpan } = metricsRef.current;
+        if (!cardWidth || !cardSpan) return;
 
-    slider.scrollLeft = dragState.startScrollLeft - deltaX;
+        const centerIndex = Math.round(
+            (slider.scrollLeft +
+                slider.clientWidth / 2 -
+                (origin + cardWidth / 2)) /
+                cardSpan,
+        );
+        const targetScroll = getTargetScrollForIndex(centerIndex);
 
-    const now = performance.now();
-    const dt = now - velocityRef.current.lastTime;
-    if (dt > 0) {
-      const instantVelocity = (event.clientX - velocityRef.current.lastX) / dt;
-      velocityRef.current.velocity =
-        velocityRef.current.velocity * 0.75 + instantVelocity * 0.25;
-    }
-    velocityRef.current.lastX = event.clientX;
-    velocityRef.current.lastTime = now;
-  };
+        setSnapMode("none");
+        gsap.to(slider, {
+            scrollLeft: targetScroll,
+            duration: 0.34,
+            ease: "power3.out",
+            onComplete: () => setSnapMode("x proximity"),
+        });
+    };
 
-  const handleDotClick = (index) => {
-    const slider = sliderRef.current;
-    if (!slider) return;
+    const stopDragging = () => {
+        const slider = sliderRef.current;
+        const dragState = dragStateRef.current;
 
-    const targetScroll = getTargetScrollForIndex(index);
-    setSnapMode("none");
-    gsap.to(slider, {
-      scrollLeft: targetScroll,
-      duration: 0.38,
-      ease: "power3.out",
-      onComplete: () => setSnapMode("x proximity"),
-    });
-  };
+        if (!dragState.active) return;
 
-  return (
-    <section
-      className="
+        if (
+            slider &&
+            dragState.pointerId !== null &&
+            slider.hasPointerCapture?.(dragState.pointerId)
+        ) {
+            slider.releasePointerCapture(dragState.pointerId);
+        }
+
+        dragState.active = false;
+        dragState.pointerId = null;
+
+        document.body.style.removeProperty("user-select");
+        document.body.style.removeProperty("cursor");
+
+        if (dragState.moved && slider) {
+            const maxScroll = Math.max(
+                0,
+                slider.scrollWidth - slider.clientWidth,
+            );
+            const momentumDistance = velocityRef.current.velocity * -260;
+            const projected = Math.min(
+                maxScroll,
+                Math.max(0, slider.scrollLeft + momentumDistance),
+            );
+            const shouldApplyMomentum =
+                Math.abs(velocityRef.current.velocity) > 0.05;
+
+            if (shouldApplyMomentum) {
+                momentumTweenRef.current = gsap.to(slider, {
+                    scrollLeft: projected,
+                    duration: 0.28,
+                    ease: "power2.out",
+                    onComplete: snapToNearestCard,
+                });
+            } else {
+                snapToNearestCard();
+            }
+        } else {
+            setSnapMode("x proximity");
+        }
+
+        window.setTimeout(() => {
+            dragState.moved = false;
+        }, 0);
+    };
+
+    const handlePointerDown = (event) => {
+        if (event.pointerType === "mouse" && event.button !== 0) return;
+
+        const slider = sliderRef.current;
+        if (!slider) return;
+
+        dragStateRef.current.active = true;
+        dragStateRef.current.moved = false;
+        dragStateRef.current.pointerId = event.pointerId;
+        dragStateRef.current.startX = event.clientX;
+        dragStateRef.current.startScrollLeft = slider.scrollLeft;
+        velocityRef.current.lastX = event.clientX;
+        velocityRef.current.lastTime = performance.now();
+        velocityRef.current.velocity = 0;
+
+        momentumTweenRef.current?.kill();
+        setSnapMode("none");
+        slider.setPointerCapture?.(event.pointerId);
+        document.body.style.userSelect = "none";
+        document.body.style.cursor = "grabbing";
+    };
+
+    const handlePointerMove = (event) => {
+        const slider = sliderRef.current;
+        const dragState = dragStateRef.current;
+
+        if (!slider || !dragState.active) return;
+
+        const deltaX = event.clientX - dragState.startX;
+        if (Math.abs(deltaX) > 8) {
+            dragState.moved = true;
+        }
+
+        slider.scrollLeft = dragState.startScrollLeft - deltaX;
+
+        const now = performance.now();
+        const dt = now - velocityRef.current.lastTime;
+        if (dt > 0) {
+            const instantVelocity =
+                (event.clientX - velocityRef.current.lastX) / dt;
+            velocityRef.current.velocity =
+                velocityRef.current.velocity * 0.75 + instantVelocity * 0.25;
+        }
+        velocityRef.current.lastX = event.clientX;
+        velocityRef.current.lastTime = now;
+    };
+
+    const handleDotClick = (index) => {
+        const slider = sliderRef.current;
+        if (!slider) return;
+
+        const targetScroll = getTargetScrollForIndex(index);
+        setSnapMode("none");
+        gsap.to(slider, {
+            scrollLeft: targetScroll,
+            duration: 0.38,
+            ease: "power3.out",
+            onComplete: () => setSnapMode("x proximity"),
+        });
+    };
+
+    return (
+        <section
+            className="
                 relative 
                 flex 
                 min-h-[90vh]
@@ -292,35 +306,35 @@ const Testimonial = () => {
                 py-12
                 md:min-h-[100vh]
             "
-    >
-      <div
-        className="
+        >
+            <div
+                className="
                     pointer-events-none 
                     absolute 
                     inset-0 
                     bg-[radial-gradient(circle_at_20%_25%,rgba(152,202,253,0.18),transparent_40%),radial-gradient(circle_at_80%_75%,rgba(1,82,148,0.22),transparent_42%)]
                 "
-      />
+            />
 
-      <GradientText
-        colors={["#015294", "#98cafd", "#015294", "#a2d6fc", "#015294"]}
-        animationSpeed={8}
-        direction="horizontal"
-        showBorder={false}
-        fontSize="clamp(1.9rem,6.5vw,2.5rem)"
-      >
-        {TESTIMONIALS_CONTENT.heading}
-      </GradientText>
+            <GradientText
+                colors={["#015294", "#98cafd", "#015294", "#a2d6fc", "#015294"]}
+                animationSpeed={8}
+                direction="horizontal"
+                showBorder={false}
+                fontSize="clamp(1.9rem,6.5vw,2.5rem)"
+            >
+                {TESTIMONIALS_CONTENT.heading}
+            </GradientText>
 
-      <section
-        ref={sliderRef}
-        onPointerDown={handlePointerDown}
-        onPointerMove={handlePointerMove}
-        onPointerUp={stopDragging}
-        onPointerCancel={stopDragging}
-        onDragStart={(event) => event.preventDefault()}
-        aria-label="Testimonials carousel"
-        className="
+            <section
+                ref={sliderRef}
+                onPointerDown={handlePointerDown}
+                onPointerMove={handlePointerMove}
+                onPointerUp={stopDragging}
+                onPointerCancel={stopDragging}
+                onDragStart={(event) => event.preventDefault()}
+                aria-label="Testimonials carousel"
+                className="
                     relative
                     mt-10
                     flex
@@ -339,20 +353,20 @@ const Testimonial = () => {
                     [-ms-overflow-style:none]
                     [&::-webkit-scrollbar]:hidden
                 "
-      >
-        {TESTIMONIALS_CONTENT.items.map((item, idx) => {
-          const initials = item.name
-            .split(" ")
-            .map((part) => part[0])
-            .join("")
-            .slice(0, 2)
-            .toUpperCase();
+            >
+                {TESTIMONIALS_CONTENT.items.map((item, idx) => {
+                    const initials = item.name
+                        .split(" ")
+                        .map((part) => part[0])
+                        .join("")
+                        .slice(0, 2)
+                        .toUpperCase();
 
-          return (
-            <article
-              key={`${item.name}-${idx}`}
-              data-testimonial-card
-              className="
+                    return (
+                        <article
+                            key={`${item.name}-${idx}`}
+                            data-testimonial-card
+                            className="
                                 relative
                                 flex
                                 min-h-[230px]
@@ -384,21 +398,21 @@ const Testimonial = () => {
                                 lg:w-[min(36vw,390px)]
                                 xl:w-[calc((100%-2.5rem)/3)]
                             "
-            >
-              <p
-                className="
+                        >
+                            <p
+                                className="
                                     relative 
                                     z-10 
                                     text-[15px] 
                                     leading-7 
                                     text-white/92
                                 "
-              >
-                "{item.quote}"
-              </p>
+                            >
+                                "{item.quote}"
+                            </p>
 
-              <div
-                className="
+                            <div
+                                className="
                                     relative 
                                     z-10 
                                     mt-6 
@@ -406,9 +420,9 @@ const Testimonial = () => {
                                     items-center 
                                     gap-3
                                 "
-              >
-                <div
-                  className="
+                            >
+                                <div
+                                    className="
                                         grid 
                                         h-11 
                                         w-11 
@@ -422,61 +436,63 @@ const Testimonial = () => {
                                         text-[#e6f3ff] 
                                         shadow-[inset_0_1px_0_rgba(255,255,255,0.35)]
                                     "
-                >
-                  {initials}
-                </div>
+                                >
+                                    {initials}
+                                </div>
 
-                <div>
-                  <p
-                    className="
+                                <div>
+                                    <p
+                                        className="
                                             text-sm 
                                             font-semibold
                                         "
-                  >
-                    {item.name}
-                  </p>
-                  <p
-                    className="
+                                    >
+                                        {item.name}
+                                    </p>
+                                    <p
+                                        className="
                                             text-xs 
                                             uppercase 
                                             tracking-[0.08em] 
                                             text-white/60
                                         "
-                  >
-                    {item.role}
-                  </p>
-                </div>
-              </div>
-            </article>
-          );
-        })}
-      </section>
+                                    >
+                                        {item.role}
+                                    </p>
+                                </div>
+                            </div>
+                        </article>
+                    );
+                })}
+            </section>
 
-      <div className="mt-6 flex flex-wrap items-center justify-center gap-0 px-4">
-        {TESTIMONIALS_CONTENT.items.map((item, idx) => {
-          const isActive = visibleDotIndexes.includes(idx);
-          const prevActive = visibleDotIndexes.includes(idx - 1);
-          const nextActive = visibleDotIndexes.includes(idx + 1);
+            <div className="mt-6 flex flex-wrap items-center justify-center gap-0 px-4">
+                {TESTIMONIALS_CONTENT.items.map((item, idx) => {
+                    const isActive = visibleDotIndexes.includes(idx);
+                    const prevActive = visibleDotIndexes.includes(idx - 1);
+                    const nextActive = visibleDotIndexes.includes(idx + 1);
 
-          return (
-            <button
-              key={`${item.name}-dot`}
-              type="button"
-              onClick={() => handleDotClick(idx)}
-              aria-label={`Go to testimonial ${idx + 1}`}
-              className={`h-1.5 transition-all duration-300 ${
-                isActive
-                  ? `w-4 bg-[#98cafd] ${prevActive ? "rounded-l-none" : "rounded-l-full"} ${
-                      nextActive ? "rounded-r-none" : "rounded-r-full"
-                    }`
-                  : "mx-1 w-3 rounded-full bg-white/30 hover:bg-white/45"
-              }`}
-            />
-          );
-        })}
-      </div>
-    </section>
-  );
+                    return (
+                        <button
+                            key={`${item.name}-dot`}
+                            type="button"
+                            onClick={() => handleDotClick(idx)}
+                            aria-label={`Go to testimonial ${idx + 1}`}
+                            className={`h-1.5 transition-all duration-300 ${
+                                isActive
+                                    ? `w-4 bg-[#98cafd] ${prevActive ? "rounded-l-none" : "rounded-l-full"} ${
+                                          nextActive
+                                              ? "rounded-r-none"
+                                              : "rounded-r-full"
+                                      }`
+                                    : "mx-1 w-3 rounded-full bg-white/30 hover:bg-white/45"
+                            }`}
+                        />
+                    );
+                })}
+            </div>
+        </section>
+    );
 };
 
 export default Testimonial;

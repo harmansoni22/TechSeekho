@@ -11,221 +11,223 @@ import { getCourseDurationLabel } from "../../lib/courseUtils";
 import SpotlightCard from "../Effects/SpotlightCard";
 
 export function CourseCard() {
-  const sliderRef = useRef(null);
-  const snapTimeoutRef = useRef(null);
-  const dragStateRef = useRef({
-    active: false,
-    moved: false,
-    pointerId: null,
-    startX: 0,
-    startScrollLeft: 0,
-  });
-  const param = useSearchParams();
-  const isUserAuthenticated = param.get("user_authenticated") === "true";
-  const [courses, setCourses] = useState([]);
-
-  useEffect(() => {
-    return () => {
-      if (snapTimeoutRef.current) {
-        window.clearTimeout(snapTimeoutRef.current);
-      }
-      document.body.style.removeProperty("user-select");
-      document.body.style.removeProperty("cursor");
-    };
-  }, []);
-
-  useEffect(() => {
-    let active = true;
-
-    (async () => {
-      try {
-        const data = await COURSES_FOR_LANDING_PAGE();
-        if (active) setCourses(Array.isArray(data) ? data : []);
-      } catch {
-        if (active) setCourses([]);
-      }
-    })();
-
-    return () => {
-      active = false;
-    };
-  }, []);
-
-  const visibleCourses = useMemo(() => {
-    const getStatusKey = (course) => {
-      const explicitStatus = String(course?.status ?? "")
-        .trim()
-        .toLowerCase();
-      if (
-        explicitStatus === "ongoing" ||
-        explicitStatus === "upcoming" ||
-        explicitStatus === "completed"
-      ) {
-        return explicitStatus;
-      }
-
-      const now = new Date();
-      const start = new Date(course?.startsAt);
-      const end = new Date(course?.endDate);
-
-      if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
-        return "unknown";
-      }
-
-      if (now < start) return "upcoming";
-      if (now > end) return "completed";
-      return "ongoing";
-    };
-
-    const getStartTime = (course) => {
-      const timestamp = new Date(course?.startsAt).getTime();
-      return Number.isNaN(timestamp) ? Number.POSITIVE_INFINITY : timestamp;
-    };
-
-    const ongoingCourses = [];
-    const upcomingCourses = [];
-
-    courses.forEach((course) => {
-      const statusKey = getStatusKey(course);
-
-      if (statusKey === "ongoing") {
-        ongoingCourses.push(course);
-      } else if (statusKey === "upcoming") {
-        upcomingCourses.push(course);
-      }
+    const sliderRef = useRef(null);
+    const snapTimeoutRef = useRef(null);
+    const dragStateRef = useRef({
+        active: false,
+        moved: false,
+        pointerId: null,
+        startX: 0,
+        startScrollLeft: 0,
     });
+    const param = useSearchParams();
+    const isUserAuthenticated = param.get("user_authenticated") === "true";
+    const [courses, setCourses] = useState([]);
 
-    upcomingCourses.sort((a, b) => getStartTime(a) - getStartTime(b));
+    useEffect(() => {
+        return () => {
+            if (snapTimeoutRef.current) {
+                window.clearTimeout(snapTimeoutRef.current);
+            }
+            document.body.style.removeProperty("user-select");
+            document.body.style.removeProperty("cursor");
+        };
+    }, []);
 
-    const closestUpcomingCourses = upcomingCourses.slice(0, 3);
-    return [...ongoingCourses, ...closestUpcomingCourses];
-  }, [courses]);
+    useEffect(() => {
+        let active = true;
 
-  const setSnapMode = (mode) => {
-    const slider = sliderRef.current;
-    if (!slider) return;
+        (async () => {
+            try {
+                const data = await COURSES_FOR_LANDING_PAGE();
+                if (active) setCourses(Array.isArray(data) ? data : []);
+            } catch {
+                if (active) setCourses([]);
+            }
+        })();
 
-    slider.style.scrollSnapType = mode;
-  };
+        return () => {
+            active = false;
+        };
+    }, []);
 
-  const snapToNearestCard = () => {
-    const slider = sliderRef.current;
-    if (!slider) return;
+    const visibleCourses = useMemo(() => {
+        const getStatusKey = (course) => {
+            const explicitStatus = String(course?.status ?? "")
+                .trim()
+                .toLowerCase();
+            if (
+                explicitStatus === "ongoing" ||
+                explicitStatus === "upcoming" ||
+                explicitStatus === "completed"
+            ) {
+                return explicitStatus;
+            }
 
-    const cards = slider.querySelectorAll("[data-course-card]");
-    if (!cards.length) return;
+            const now = new Date();
+            const start = new Date(course?.startsAt);
+            const end = new Date(course?.endDate);
 
-    const sliderRect = slider.getBoundingClientRect();
-    const sliderCenter = sliderRect.left + sliderRect.width / 2;
+            if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+                return "unknown";
+            }
 
-    let targetCard = null;
-    let nearestDistance = Number.POSITIVE_INFINITY;
+            if (now < start) return "upcoming";
+            if (now > end) return "completed";
+            return "ongoing";
+        };
 
-    cards.forEach((card) => {
-      const cardRect = card.getBoundingClientRect();
-      const cardCenter = cardRect.left + cardRect.width / 2;
-      const distance = Math.abs(cardCenter - sliderCenter);
+        const getStartTime = (course) => {
+            const timestamp = new Date(course?.startsAt).getTime();
+            return Number.isNaN(timestamp)
+                ? Number.POSITIVE_INFINITY
+                : timestamp;
+        };
 
-      if (distance < nearestDistance) {
-        nearestDistance = distance;
-        targetCard = card;
-      }
-    });
+        const ongoingCourses = [];
+        const upcomingCourses = [];
 
-    setSnapMode("x proximity");
-    targetCard?.scrollIntoView({
-      behavior: "smooth",
-      block: "nearest",
-      inline: "center",
-    });
-  };
+        courses.forEach((course) => {
+            const statusKey = getStatusKey(course);
 
-  const stopDragging = () => {
-    const dragState = dragStateRef.current;
+            if (statusKey === "ongoing") {
+                ongoingCourses.push(course);
+            } else if (statusKey === "upcoming") {
+                upcomingCourses.push(course);
+            }
+        });
 
-    if (!dragState) return;
+        upcomingCourses.sort((a, b) => getStartTime(a) - getStartTime(b));
 
-    dragState.active = false;
-    dragState.pointerId = null;
+        const closestUpcomingCourses = upcomingCourses.slice(0, 3);
+        return [...ongoingCourses, ...closestUpcomingCourses];
+    }, [courses]);
 
-    document.body.style.removeProperty("user-select");
-    document.body.style.removeProperty("cursor");
+    const setSnapMode = (mode) => {
+        const slider = sliderRef.current;
+        if (!slider) return;
 
-    if (dragState.moved) {
-      snapToNearestCard();
-    } else {
-      setSnapMode("x proximity");
-    }
+        slider.style.scrollSnapType = mode;
+    };
 
-    if (snapTimeoutRef.current) {
-      window.clearTimeout(snapTimeoutRef.current);
-    }
+    const snapToNearestCard = () => {
+        const slider = sliderRef.current;
+        if (!slider) return;
 
-    snapTimeoutRef.current = window.setTimeout(() => {
-      setSnapMode("x proximity");
-    }, 250);
+        const cards = slider.querySelectorAll("[data-course-card]");
+        if (!cards.length) return;
 
-    window.setTimeout(() => {
-      dragState.moved = false;
-    }, 0);
-  };
+        const sliderRect = slider.getBoundingClientRect();
+        const sliderCenter = sliderRect.left + sliderRect.width / 2;
 
-  const handlePointerDown = (event) => {
-    if (event.pointerType === "mouse" && event.button !== 0) return;
+        let targetCard = null;
+        let nearestDistance = Number.POSITIVE_INFINITY;
 
-    const slider = sliderRef.current;
-    if (!slider) return;
+        cards.forEach((card) => {
+            const cardRect = card.getBoundingClientRect();
+            const cardCenter = cardRect.left + cardRect.width / 2;
+            const distance = Math.abs(cardCenter - sliderCenter);
 
-    dragStateRef.current.active = true;
-    dragStateRef.current.moved = false;
-    dragStateRef.current.pointerId = event.pointerId;
-    dragStateRef.current.startX = event.clientX;
-    dragStateRef.current.startScrollLeft = slider.scrollLeft;
+            if (distance < nearestDistance) {
+                nearestDistance = distance;
+                targetCard = card;
+            }
+        });
 
-    if (snapTimeoutRef.current) {
-      window.clearTimeout(snapTimeoutRef.current);
-    }
+        setSnapMode("x proximity");
+        targetCard?.scrollIntoView({
+            behavior: "smooth",
+            block: "nearest",
+            inline: "center",
+        });
+    };
 
-    setSnapMode("none");
-    // slider.setPointerCapture?.(event.pointerId);
-    document.body.style.userSelect = "none";
-    document.body.style.cursor = "grabbing";
-  };
+    const stopDragging = () => {
+        const dragState = dragStateRef.current;
 
-  const handlePointerMove = (event) => {
-    const slider = sliderRef.current;
-    const dragState = dragStateRef.current;
+        if (!dragState) return;
 
-    if (!slider || !dragState.active) return;
+        dragState.active = false;
+        dragState.pointerId = null;
 
-    const deltaX = event.clientX - dragState.startX;
+        document.body.style.removeProperty("user-select");
+        document.body.style.removeProperty("cursor");
 
-    if (Math.abs(deltaX) > 10) {
-      dragState.moved = true;
-    }
+        if (dragState.moved) {
+            snapToNearestCard();
+        } else {
+            setSnapMode("x proximity");
+        }
 
-    slider.scrollLeft = dragState.startScrollLeft - deltaX;
-  };
+        if (snapTimeoutRef.current) {
+            window.clearTimeout(snapTimeoutRef.current);
+        }
 
-  const handleClickCapture = (event) => {
-    if (!dragStateRef.current.moved) return;
+        snapTimeoutRef.current = window.setTimeout(() => {
+            setSnapMode("x proximity");
+        }, 250);
 
-    event.preventDefault();
-    event.stopPropagation();
-    dragStateRef.current.moved = false;
-  };
+        window.setTimeout(() => {
+            dragState.moved = false;
+        }, 0);
+    };
 
-  return (
-    <section
-      ref={sliderRef}
-      // onClickCapture={handleClickCapture}
-      onDragStart={(event) => event.preventDefault()}
-      onPointerCancel={stopDragging}
-      onPointerDown={handlePointerDown}
-      onPointerMove={handlePointerMove}
-      onPointerUp={stopDragging}
-      aria-label="Courses carousel"
-      className="
+    const handlePointerDown = (event) => {
+        if (event.pointerType === "mouse" && event.button !== 0) return;
+
+        const slider = sliderRef.current;
+        if (!slider) return;
+
+        dragStateRef.current.active = true;
+        dragStateRef.current.moved = false;
+        dragStateRef.current.pointerId = event.pointerId;
+        dragStateRef.current.startX = event.clientX;
+        dragStateRef.current.startScrollLeft = slider.scrollLeft;
+
+        if (snapTimeoutRef.current) {
+            window.clearTimeout(snapTimeoutRef.current);
+        }
+
+        setSnapMode("none");
+        // slider.setPointerCapture?.(event.pointerId);
+        document.body.style.userSelect = "none";
+        document.body.style.cursor = "grabbing";
+    };
+
+    const handlePointerMove = (event) => {
+        const slider = sliderRef.current;
+        const dragState = dragStateRef.current;
+
+        if (!slider || !dragState.active) return;
+
+        const deltaX = event.clientX - dragState.startX;
+
+        if (Math.abs(deltaX) > 10) {
+            dragState.moved = true;
+        }
+
+        slider.scrollLeft = dragState.startScrollLeft - deltaX;
+    };
+
+    const handleClickCapture = (event) => {
+        if (!dragStateRef.current.moved) return;
+
+        event.preventDefault();
+        event.stopPropagation();
+        dragStateRef.current.moved = false;
+    };
+
+    return (
+        <section
+            ref={sliderRef}
+            // onClickCapture={handleClickCapture}
+            onDragStart={(event) => event.preventDefault()}
+            onPointerCancel={stopDragging}
+            onPointerDown={handlePointerDown}
+            onPointerMove={handlePointerMove}
+            onPointerUp={stopDragging}
+            aria-label="Courses carousel"
+            className="
                     flex
                     w-full
                     justify-start
@@ -244,35 +246,35 @@ export function CourseCard() {
                     [-ms-overflow-style:none] 
                     [&::-webkit-scrollbar]:hidden
                 "
-    >
-      {visibleCourses.map((course, idx) => {
-        const isOngoing =
-          String(course.status || "").toLowerCase() === "ongoing";
-        const duration = getCourseDurationLabel(
-          course.startsAt,
-          course.endDate,
-        );
-        const coursePrice = Number(course.price);
-        const priceLabel =
-          Number.isFinite(coursePrice) && coursePrice > 0
-            ? `INR ${coursePrice.toLocaleString("en-IN")}`
-            : "Free";
+        >
+            {visibleCourses.map((course, idx) => {
+                const isOngoing =
+                    String(course.status || "").toLowerCase() === "ongoing";
+                const duration = getCourseDurationLabel(
+                    course.startsAt,
+                    course.endDate,
+                );
+                const coursePrice = Number(course.price);
+                const priceLabel =
+                    Number.isFinite(coursePrice) && coursePrice > 0
+                        ? `INR ${coursePrice.toLocaleString("en-IN")}`
+                        : "Free";
 
-        return (
-          <Link
-            href={`/landingpage/courses/course/${course.slug}?user_authenticated=${isUserAuthenticated}`}
-            key={course.id ?? idx}
-            data-course-card
-            className="
+                return (
+                    <Link
+                        href={`/landingpage/courses/course/${course.slug}?user_authenticated=${isUserAuthenticated}`}
+                        key={course.id ?? idx}
+                        data-course-card
+                        className="
                                 shrink-0
                                 snap-center
                                 h-max
                             "
-            onClick={handleClickCapture}
-          >
-            <SpotlightCard
-              spotlightColor="rgba(255, 255, 255, 0.4)"
-              className="
+                        onClick={handleClickCapture}
+                    >
+                        <SpotlightCard
+                            spotlightColor="rgba(255, 255, 255, 0.4)"
+                            className="
                                     flex
                                     flex-col
                                     justify-center
@@ -285,19 +287,19 @@ export function CourseCard() {
                                     shrink-0
                                     select-none
                                 "
-              key={`${course.title}-${idx}`}
-            >
-              <Image
-                src={course.bannerImage}
-                className="relative w-full h-[auto] top-0"
-                width={320}
-                height={180}
-                alt="banner image"
-                draggable={false}
-              />
+                            key={`${course.title}-${idx}`}
+                        >
+                            <Image
+                                src={course.bannerImage}
+                                className="relative w-full h-[auto] top-0"
+                                width={320}
+                                height={180}
+                                alt="banner image"
+                                draggable={false}
+                            />
 
-              <div
-                className="
+                            <div
+                                className="
                                         flex
                                         flex-col
                                         gap-3
@@ -305,28 +307,30 @@ export function CourseCard() {
                                         h-full
                                         w-full
                                     "
-              >
-                <div
-                  className="
+                            >
+                                <div
+                                    className="
                                             flex
                                             justify-between
                                         "
-                >
-                  <Badge
-                    variant={isOngoing ? "danger" : "success"}
-                    className="gap-2 h-5"
-                  >
-                    <span
-                      className="
+                                >
+                                    <Badge
+                                        variant={
+                                            isOngoing ? "danger" : "success"
+                                        }
+                                        className="gap-2 h-5"
+                                    >
+                                        <span
+                                            className="
                         relative 
                         flex 
                         h-2.5 
                         w-2.5
                       "
-                    >
-                      {isOngoing && (
-                        <span
-                          className="
+                                        >
+                                            {isOngoing && (
+                                                <span
+                                                    className="
                             absolute 
                             inline-flex 
                             h-full 
@@ -336,87 +340,91 @@ export function CourseCard() {
                             opacity-700 
                             animate-ping
                           "
-                        />
-                      )}
-                      <span
-                        className={`
+                                                />
+                                            )}
+                                            <span
+                                                className={`
                                                             relative 
                                                             inline-flex 
                                                             h-2.5 
                                                             w-2.5 
                                                             rounded-full ${
-                                                              isOngoing
-                                                                ? "bg-red-500"
-                                                                : "bg-green-500"
+                                                                isOngoing
+                                                                    ? "bg-red-500"
+                                                                    : "bg-green-500"
                                                             }
                                                         `}
-                      />
-                    </span>
+                                            />
+                                        </span>
 
-                    {isOngoing ? "Ongoing" : "Upcoming"}
-                  </Badge>
-                  <Badge variant="glass">Duration: {duration}</Badge>
-                </div>
-                <div
-                  className="
+                                        {isOngoing ? "Ongoing" : "Upcoming"}
+                                    </Badge>
+                                    <Badge variant="glass">
+                                        Duration: {duration}
+                                    </Badge>
+                                </div>
+                                <div
+                                    className="
                                             flex 
                                             flex-col
                                         "
-                >
-                  <h3
-                    className="
+                                >
+                                    <h3
+                                        className="
                                                 text-xl 
                                                 font-semibold 
                                                 text-white
                                             "
-                  >
-                    {course.title}
-                  </h3>
+                                    >
+                                        {course.title}
+                                    </h3>
 
-                  <p
-                    className="
+                                    <p
+                                        className="
                                                 text-sm 
                                                 leading-6 
                                                 text-white/80 
                                                 text-justify 
                                                 px-3
                                             "
-                  >
-                    {course.description}
-                  </p>
-                </div>
+                                    >
+                                        {course.description}
+                                    </p>
+                                </div>
 
-                <div
-                  className="
+                                <div
+                                    className="
                                             mt-auto
                                             flex 
                                             justify-between 
                                             items-center
                                             gap-3
                                         "
-                >
-                  <p className="text-sm font-medium text-white/80">
-                    Price: {priceLabel}
-                  </p>
-                  <Button
-                    variant={isOngoing ? "danger" : "success"}
-                    className={`${isOngoing ? "bg-red-500" : "bg-green-500"} rounded-full`}
-                  >
-                    {isOngoing ? "Buy Now" : "Pre-register"}
-                  </Button>
-                </div>
-              </div>
-            </SpotlightCard>
-          </Link>
-        );
-      })}
+                                >
+                                    <p className="text-sm font-medium text-white/80">
+                                        Price: {priceLabel}
+                                    </p>
+                                    <Button
+                                        variant={
+                                            isOngoing ? "danger" : "success"
+                                        }
+                                        className={`${isOngoing ? "bg-red-500" : "bg-green-500"} rounded-full`}
+                                    >
+                                        {isOngoing ? "Buy Now" : "Pre-register"}
+                                    </Button>
+                                </div>
+                            </div>
+                        </SpotlightCard>
+                    </Link>
+                );
+            })}
 
-      <Link
-        href={`/landingpage/courses?user_authenticated=${isUserAuthenticated}`}
-      >
-        <SpotlightCard
-          spotlightColor="rgba(255, 255, 255, 0.4)"
-          className="
+            <Link
+                href={`/landingpage/courses?user_authenticated=${isUserAuthenticated}`}
+            >
+                <SpotlightCard
+                    spotlightColor="rgba(255, 255, 255, 0.4)"
+                    className="
                             flex
                             flex-col
                             justify-center
@@ -430,9 +438,9 @@ export function CourseCard() {
                             shrink-0
                             select-none
                         "
-        >
-          <div
-            className="
+                >
+                    <div
+                        className="
                                 text-center 
                                 flex 
                                 flex-col 
@@ -440,12 +448,14 @@ export function CourseCard() {
                                 justify-center 
                                 items-center
                             "
-          >
-            <h1 className="text-xl">Want to explore more Courses?</h1>
-            <div className="text-md">Click here</div>
-          </div>
-        </SpotlightCard>
-      </Link>
-    </section>
-  );
+                    >
+                        <h1 className="text-xl">
+                            Want to explore more Courses?
+                        </h1>
+                        <div className="text-md">Click here</div>
+                    </div>
+                </SpotlightCard>
+            </Link>
+        </section>
+    );
 }
