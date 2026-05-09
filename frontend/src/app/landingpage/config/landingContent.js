@@ -1,168 +1,118 @@
 import { api } from "@/lib/api";
 
 export const HERO_CONTENT = {
-  title: "Welcome to Tech Seekho!",
-  subtitle: "Explore and learn the art of technology with us.",
-  ctaLabel: "Get Started",
+    title: "Technology Skills Every Child Needs for the Future",
+    subtitle:
+        "65% of future jobs don't exist yet. Students who learn to build AI, program robots and create technology will have a career advantage that no textbook can match.",
+    ctaLabel: "Find My Program",
 };
 
 export const LANDING_SECTION_TITLES = {
-  whyChooseUs: "Why Choose us?",
-  whatWeOffer: "What We Offer",
-  testimonials: "Testimonials",
-  callToAction: "Call To Action",
+    whyChooseUs: "Why Techseekho?",
+    whatWeOffer: "Skills That Define Tomorrow's Economy",
+    testimonials: "What Families & Schools Say",
+    callToAction: "Give Your Child the Skills of Tomorrow",
 };
 
 export const WHY_CHOOSE_US_ITEMS = [
-  {
-    heading: "Reliable Mentorship",
-    content:
-      "Learn from mentors who focus on practical outcomes and consistent support throughout your journey.",
-  },
-  {
-    heading: "Project-Based Learning",
-    content:
-      "Build real-world projects while learning core concepts so your portfolio grows with your skills.",
-  },
-  {
-    heading: "Career-Focused Roadmaps",
-    content:
-      "Follow structured learning paths designed to help you become job-ready with confidence.",
-  },
+    {
+        heading: "100% Hands-On Learning",
+        content:
+            "Every class involves building real things. Not simulations. Not demos. Real robots, real drones, real AI systems.",
+    },
+    {
+        heading: "NEP 2020 Certified",
+        content:
+            "Industry certificates, nationally recognised programs that integrate into your existing timetable seamlessly.",
+    },
+    {
+        heading: "Career-Mapped Programs",
+        content:
+            "Every program links to a 2030 high-demand career. From AI Engineer to Robotics Engineer to Drone Engineer.",
+    },
+    {
+        heading: "50+ Competition Wins",
+        content:
+            "State & national level achievements. Students from MP are winning championships in robotics and drone technology.",
+    },
+    {
+        heading: "4.9 / 5 Rating",
+        content:
+            "Average parent & school satisfaction. Trusted by 120+ schools across Madhya Pradesh.",
+    },
+    {
+        heading: "Delivered In Your School",
+        content:
+            "Labs, equipment and trainers come to you. No capital investment required for schools.",
+    },
 ];
 
 export const TESTIMONIALS_CONTENT = {
-  heading: "What People say about us",
-  items: [
-    {
-      quote:
-        "I stopped hopping between random tutorials and followed one clear path. Within weeks, I had projects I was proud to show.",
-      name: "Neha Kapoor",
-      role: "Frontend Developer",
-    },
-    {
-      quote:
-        "Mentors gave direct feedback on my code quality, not generic advice. That single change improved my pace a lot.",
-      name: "Vikram Joshi",
-      role: "Backend Intern",
-    },
-    {
-      quote:
-        "Every session felt practical. I could apply concepts immediately, and my confidence in interviews improved quickly.",
-      name: "Sana Khan",
-      role: "Career Switcher",
-    },
-    {
-      quote:
-        "Learning felt structured and calm. I always knew what to practice next, which removed confusion completely.",
-      name: "Aarav Sharma",
-      role: "Student",
-    },
-    {
-      quote:
-        "The curriculum felt modern and relevant. I used the same concepts in my internship tasks within the first month.",
-      name: "Ishita Rao",
-      role: "UI Engineer",
-    },
-    {
-      quote:
-        "The best part was accountability. Weekly reviews pushed me to finish projects instead of leaving them halfway.",
-      name: "Karan Patel",
-      role: "Software Engineer",
-    },
-    {
-      quote:
-        "Before joining, I was confused about where to start. Now I have a clear portfolio and a strong base in web development.",
-      name: "Mehak Arora",
-      role: "Junior Developer",
-    },
-    {
-      quote:
-        "The mentors explained complex backend topics in a simple way. I finally understand how APIs and databases connect.",
-      name: "Rohit Tiwari",
-      role: "Backend Trainee",
-    },
-    {
-      quote:
-        "I loved that everything was project-first. Building real features made learning far more effective than just theory.",
-      name: "Pooja Nair",
-      role: "Full Stack Learner",
-    },
-    {
-      quote:
-        "Code reviews were detailed and respectful. I improved my naming, structure, and debugging habits significantly.",
-      name: "Aditya Mehra",
-      role: "Frontend Intern",
-    },
-    {
-      quote:
-        "This program helped me switch from support to development with confidence. Mock interviews made a huge difference.",
-      name: "Sonal Yadav",
-      role: "Career Switcher",
-    },
-    {
-      quote:
-        "I used to fear JavaScript. Now I can build responsive, interactive pages and explain my decisions clearly.",
-      name: "Manav Bhatia",
-      role: "Web Developer",
-    },
-    {
-      quote:
-        "The teaching style was practical and beginner-friendly. I could ask basic questions without feeling judged.",
-      name: "Ritika Sharma",
-      role: "Student",
-    },
-    {
-      quote:
-        "Hands-on assignments and mentor checkpoints kept me consistent. I now ship small products end-to-end on my own.",
-      name: "Harsh Gupta",
-      role: "Product Engineer",
-    },
-    {
-      quote:
-        "I joined for AI basics and got much more: clean coding practices, real projects, and confidence in technical interviews.",
-      name: "Nidhi Verma",
-      role: "AI Enthusiast",
-    },
-    {
-      quote:
-        "From day one, the focus stayed on outcomes. I left with deployable projects, better problem-solving, and a stronger resume.",
-      name: "Arjun Malhotra",
-      role: "Graduate Learner",
-    },
-  ],
+    heading: "What Families & Schools Say About Techseekho",
+    items: [
+        {
+            quote: "My son was spending evenings on YouTube. After Techseekho robotics, he spends that same time building real robots. Extraordinary transformation.",
+            name: "Priya Sharma",
+            role: "Parent · Indore",
+        },
+        {
+            quote: "We integrated Techseekho's AI program. Students now build real AI projects — placing us among MP's most forward-thinking institutions.",
+            name: "Rajesh Patel",
+            role: "Principal · Bhopal",
+        },
+        {
+            quote: "My daughter built a functional drone at 13. Techseekho didn't just teach technology — they built her belief she can build anything.",
+            name: "Sunita Verma",
+            role: "Parent · Ujjain",
+        },
+        {
+            quote: "Techseekho brought 60+ new enrollments because parents actively chose our school for the technology programs.",
+            name: "Amit Joshi",
+            role: "School Owner · Indore",
+        },
+        {
+            quote: "I thought coding was only for IIT students. Techseekho showed me it's for everyone. I'm 12 and building my own app!",
+            name: "Aryan Gupta",
+            role: "Student, Age 12 · Gwalior",
+        },
+        {
+            quote: "Our board visited the Techseekho lab and was immediately convinced. This is exactly what MP schools need.",
+            name: "Dr. Meena Tiwari",
+            role: "Education Officer · MP Govt",
+        },
+    ],
 };
 
 export const CALL_TO_ACTION_CONTENT = {
-  heading: "Start Building Your Tech Career Today",
-  subtitle:
-    "Join practical, mentor-led learning paths designed to help you build projects, gain confidence, and become job-ready faster.",
-  primaryButtonLabel: "Start Learning",
-  primaryButtonHref: "/signup",
-  secondaryButtonLabel: "Explore Courses",
-  secondaryButtonHref: "/landingpage/courses",
-  newsletterTitle: "Join Our Newsletter",
-  newsletterSubtitle:
-    "Get learning tips, project ideas, and course updates in your inbox.",
-  newsletterPlaceholder: "Enter your email address",
-  newsletterButtonLabel: "Subscribe",
-  newsletterTrustPills: ["No spam", "Weekly insights", "Unsubscribe anytime"],
-  highlights: [
-    "Live mentor support",
-    "Hands-on projects",
-    "Career-focused guidance",
-  ],
+    heading: "Give Your Child the Skills of Tomorrow",
+    subtitle:
+        "Whether you're a parent, school principal, or from an education department — let's make it happen. Every week without technology skills is a week behind. The best time to start is today.",
+    primaryButtonLabel: "Enroll Now",
+    primaryButtonHref: "/signup",
+    secondaryButtonLabel: "Partner Your School",
+    secondaryButtonHref: "/landingpage/contact",
+    newsletterTitle: "Join Our Newsletter",
+    newsletterSubtitle:
+        "Get learning tips, project ideas, and course updates in your inbox.",
+    newsletterPlaceholder: "Enter your email address",
+    newsletterButtonLabel: "Subscribe",
+    newsletterTrustPills: ["No spam", "Weekly insights", "Unsubscribe anytime"],
+    highlights: [
+        "120+ Schools partnered across MP",
+        "5000+ Students trained through school programs",
+        "4.9★ School satisfaction rating",
+    ],
 };
 
 export async function COURSES_FOR_LANDING_PAGE() {
-  const courses = await api("/courses");
-  // const COURSE = []
+    const courses = await api("/courses");
+    // const COURSE = []
 
-  // courses.map((course) => {
-  //     COURSE.push(course);
-  // })
+    // courses.map((course) => {
+    //     COURSE.push(course);
+    // })
 
-  // return COURSE;
+    // return COURSE;
 
-  return Array.isArray(courses) ? courses : [];
+    return Array.isArray(courses) ? courses : [];
 }
