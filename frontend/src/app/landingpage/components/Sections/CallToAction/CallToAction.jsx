@@ -5,9 +5,9 @@ import { CALL_TO_ACTION_CONTENT } from "@/app/landingpage/config/landingContent"
 import GradientText from "../../Effects/TextEffects/GradientText";
 
 const CallToAction = () => {
-  return (
-    <section
-      className="
+    return (
+        <section
+            className="
                 relative 
                 flex min-h-[100vh] 
                 items-center 
@@ -16,17 +16,17 @@ const CallToAction = () => {
                 px-4 
                 py-16
             "
-    >
-      <div
-        className="
+        >
+            <div
+                className="
                     pointer-events-none 
                     absolute 
                     inset-0 
                     bg-[linear-gradient(125deg,rgba(1,82,148,0.34),rgba(5,18,38,0.9)_45%,rgba(13,123,204,0.24))]
                 "
-      />
-      <div
-        className="
+            />
+            <div
+                className="
                     pointer-events-none
                     absolute
                     inset-0
@@ -34,9 +34,9 @@ const CallToAction = () => {
                     [background-image:radial-gradient(rgba(152,202,253,0.2)_1px,transparent_1px)]
                     [background-size:22px_22px]
                 "
-      />
-      <div
-        className="
+            />
+            <div
+                className="
                     pointer-events-none
                     absolute
                     -left-24
@@ -47,9 +47,9 @@ const CallToAction = () => {
                     bg-[#015294]/25
                     blur-3xl
                 "
-      />
-      <div
-        className="
+            />
+            <div
+                className="
                     pointer-events-none
                     absolute
                     -right-20
@@ -60,10 +60,10 @@ const CallToAction = () => {
                     bg-[#0d7bcc]/20
                     blur-3xl
                 "
-      />
+            />
 
-      <div
-        className="
+            <div
+                className="
                     relative 
                     z-10
                     mx-auto 
@@ -78,9 +78,9 @@ const CallToAction = () => {
                     md:px-8 
                     md:py-10
                 "
-      >
-        <div
-          className="
+            >
+                <div
+                    className="
                         flex 
                         w-full 
                         max-w-5xl 
@@ -89,43 +89,49 @@ const CallToAction = () => {
                         gap-6 
                         text-center
                     "
-        >
-          <GradientText
-            colors={["#015294", "#98cafd", "#015294", "#a2d6fc", "#015294"]}
-            animationSpeed={8}
-            direction="horizontal"
-            showBorder={false}
-            fontSize="clamp(2rem,7.2vw,2.9rem)"
-          >
-            {CALL_TO_ACTION_CONTENT.heading}
-          </GradientText>
+                >
+                    <GradientText
+                        colors={[
+                            "#015294",
+                            "#98cafd",
+                            "#015294",
+                            "#a2d6fc",
+                            "#015294",
+                        ]}
+                        animationSpeed={8}
+                        direction="horizontal"
+                        showBorder={false}
+                        fontSize="clamp(2rem,7.2vw,2.9rem)"
+                    >
+                        {CALL_TO_ACTION_CONTENT.heading}
+                    </GradientText>
 
-          <p
-            className="
+                    <p
+                        className="
                             max-w-3xl 
                             text-sm 
                             leading-7 
                             text-white/70 
                             md:text-base
                         "
-          >
-            {CALL_TO_ACTION_CONTENT.subtitle}
-          </p>
+                    >
+                        {CALL_TO_ACTION_CONTENT.subtitle}
+                    </p>
 
-          <div
-            className="
+                    <div
+                        className="
                             flex 
                             flex-wrap 
                             items-center 
                             justify-center 
                             gap-3
                         "
-          >
-            {CALL_TO_ACTION_CONTENT.highlights.map((item) => (
-              <Badge
-                key={item}
-                variant="glass"
-                className="
+                    >
+                        {CALL_TO_ACTION_CONTENT.highlights.map((item) => (
+                            <Badge
+                                key={item}
+                                variant="glass"
+                                className="
                                     px-4 
                                     py-2 
                                     text-xs 
@@ -133,14 +139,14 @@ const CallToAction = () => {
                                     tracking-[0.09em] 
                                     text-white/70
                                 "
-              >
-                {item}
-              </Badge>
-            ))}
-          </div>
+                            >
+                                {item}
+                            </Badge>
+                        ))}
+                    </div>
 
-          <div
-            className="
+                    <div
+                        className="
                             flex 
                             flex-wrap 
                             items-center 
@@ -148,10 +154,10 @@ const CallToAction = () => {
                             gap-3 
                             pt-1
                         "
-          >
-            <Link href={CALL_TO_ACTION_CONTENT.primaryButtonHref}>
-              <Button
-                className="
+                    >
+                        <Link href={CALL_TO_ACTION_CONTENT.primaryButtonHref}>
+                            <Button
+                                className="
                                     h-11 
                                     rounded-full 
                                     border 
@@ -166,15 +172,15 @@ const CallToAction = () => {
                                     backdrop-saturate-150 
                                     hover:bg-[linear-gradient(145deg,rgba(1,82,148,0.74),rgba(13,123,204,0.52))]
                                 "
-              >
-                {CALL_TO_ACTION_CONTENT.primaryButtonLabel}
-              </Button>
-            </Link>
+                            >
+                                {CALL_TO_ACTION_CONTENT.primaryButtonLabel}
+                            </Button>
+                        </Link>
 
-            <Link href={CALL_TO_ACTION_CONTENT.secondaryButtonHref}>
-              <Button
-                variant="ghost"
-                className="
+                        <Link href={CALL_TO_ACTION_CONTENT.secondaryButtonHref}>
+                            <Button
+                                variant="ghost"
+                                className="
                                     h-11 
                                     rounded-full 
                                     border 
@@ -190,15 +196,15 @@ const CallToAction = () => {
                                     hover:bg-[linear-gradient(145deg,rgba(171, 171, 171, 0.46),rgba(13,123,204,0.28))] 
                                     hover:text-white
                                 "
-              >
-                {CALL_TO_ACTION_CONTENT.secondaryButtonLabel}
-              </Button>
-            </Link>
-          </div>
-        </div>
+                            >
+                                {CALL_TO_ACTION_CONTENT.secondaryButtonLabel}
+                            </Button>
+                        </Link>
+                    </div>
+                </div>
 
-        <div
-          className="
+                <div
+                    className="
                         w-full 
                         max-w-4xl 
                         border-t 
@@ -206,19 +212,25 @@ const CallToAction = () => {
                         pt-8 
                         text-center
                     "
-        >
-          <GradientText
-            colors={["#015294", "#98cafd", "#015294", "#a2d6fc", "#015294"]}
-            animationSpeed={8}
-            direction="horizontal"
-            showBorder={false}
-            fontSize="clamp(1.8rem,6.5vw,3.25rem)"
-          >
-            {CALL_TO_ACTION_CONTENT.newsletterTitle}
-          </GradientText>
+                >
+                    <GradientText
+                        colors={[
+                            "#015294",
+                            "#98cafd",
+                            "#015294",
+                            "#a2d6fc",
+                            "#015294",
+                        ]}
+                        animationSpeed={8}
+                        direction="horizontal"
+                        showBorder={false}
+                        fontSize="clamp(1.8rem,6.5vw,3.25rem)"
+                    >
+                        {CALL_TO_ACTION_CONTENT.newsletterTitle}
+                    </GradientText>
 
-          <p
-            className="
+                    <p
+                        className="
                             mx-auto 
                             mt-3 
                             max-w-3xl 
@@ -227,12 +239,12 @@ const CallToAction = () => {
                             text-white/80 
                             md:text-lg
                         "
-          >
-            {CALL_TO_ACTION_CONTENT.newsletterSubtitle}
-          </p>
+                    >
+                        {CALL_TO_ACTION_CONTENT.newsletterSubtitle}
+                    </p>
 
-          <form
-            className="
+                    <form
+                        className="
                             mx-auto 
                             mt-7 
                             flex 
@@ -243,13 +255,15 @@ const CallToAction = () => {
                             md:flex-row 
                             md:items-center
                         "
-          >
-            <input
-              type="email"
-              name="email"
-              required
-              placeholder={CALL_TO_ACTION_CONTENT.newsletterPlaceholder}
-              className="
+                    >
+                        <input
+                            type="email"
+                            name="email"
+                            required
+                            placeholder={
+                                CALL_TO_ACTION_CONTENT.newsletterPlaceholder
+                            }
+                            className="
                                 h-14 
                                 w-full 
                                 rounded-full 
@@ -265,10 +279,10 @@ const CallToAction = () => {
                                 focus:ring-2 
                                 focus:ring-[#98cafd]/60
                             "
-            />
-            <Button
-              type="submit"
-              className="
+                        />
+                        <Button
+                            type="submit"
+                            className="
                                 h-14 
                                 min-w-[180px] 
                                 rounded-full 
@@ -284,13 +298,13 @@ const CallToAction = () => {
                                 backdrop-saturate-150 
                                 hover:bg-[linear-gradient(145deg,rgba(1,82,148,0.78),rgba(13,123,204,0.58))]
                             "
-            >
-              {CALL_TO_ACTION_CONTENT.newsletterButtonLabel}
-            </Button>
-          </form>
+                        >
+                            {CALL_TO_ACTION_CONTENT.newsletterButtonLabel}
+                        </Button>
+                    </form>
 
-          <div
-            className="
+                    <div
+                        className="
                             mt-4 
                             flex 
                             flex-wrap 
@@ -298,12 +312,13 @@ const CallToAction = () => {
                             justify-center 
                             gap-2
                         "
-          >
-            {CALL_TO_ACTION_CONTENT.newsletterTrustPills.map((pill) => (
-              <Badge
-                key={pill}
-                variant="glass"
-                className="
+                    >
+                        {CALL_TO_ACTION_CONTENT.newsletterTrustPills.map(
+                            (pill) => (
+                                <Badge
+                                    key={pill}
+                                    variant="glass"
+                                    className="
                                     px-3 
                                     py-1 
                                     text-[11px] 
@@ -311,15 +326,16 @@ const CallToAction = () => {
                                     tracking-[0.08em] 
                                     text-white/70
                                 "
-              >
-                {pill}
-              </Badge>
-            ))}
-          </div>
-        </div>
-      </div>
-    </section>
-  );
+                                >
+                                    {pill}
+                                </Badge>
+                            ),
+                        )}
+                    </div>
+                </div>
+            </div>
+        </section>
+    );
 };
 
 export default CallToAction;
