@@ -3,62 +3,70 @@
 import { useEffect } from "react";
 
 export default function useHorizontalScrollTrack({
-  wrapperRef,
-  trackRef,
-  onMeasure,
-  enabled = true,
+    wrapperRef,
+    trackRef,
+    onMeasure,
+    enabled = true,
 }) {
-  useEffect(() => {
-    const wrapper = wrapperRef.current;
-    const track = trackRef.current;
+    useEffect(() => {
+        const wrapper = wrapperRef.current;
+        const track = trackRef.current;
 
-    if (!enabled) {
-      if (wrapper) wrapper.style.height = "";
-      if (track) track.style.transform = "";
-      return;
-    }
+        if (!enabled) {
+            if (wrapper) wrapper.style.height = "";
+            if (track) {
+                track.style.transform = "";
+                track.style.left = "";
+                track.style.position = "";
+            }
+            return;
+        }
 
-    if (!wrapper || !track) return;
+        if (!wrapper || !track) return;
 
-    let maxX = 0;
-    let rafId = 0;
+        let maxX = 0;
+        let rafId = 0;
 
-    const measure = () => {
-      maxX = Math.max(0, track.scrollWidth - window.innerWidth);
-      wrapper.style.height = `${maxX + window.innerHeight}px`;
+        // Use positional movement instead of transform to preserve backdrop-filter rendering.
+        track.style.position = "relative";
 
-      if (typeof onMeasure === "function") {
-        requestAnimationFrame(() => onMeasure());
-      }
-    };
+        const measure = () => {
+            maxX = Math.max(0, track.scrollWidth - window.innerWidth);
+            wrapper.style.height = `${maxX + window.innerHeight}px`;
 
-    const render = () => {
-      const y = window.scrollY - wrapper.offsetTop;
-      const x = Math.max(0, Math.min(y, maxX));
-      track.style.transform = `translate3d(${-x}px,0,0)`;
-      rafId = 0;
-    };
+            if (typeof onMeasure === "function") {
+                requestAnimationFrame(() => onMeasure());
+            }
+        };
 
-    const handleScroll = () => {
-      if (!rafId) {
-        rafId = requestAnimationFrame(render);
-      }
-    };
+        const render = () => {
+            const y = window.scrollY - wrapper.offsetTop;
+            const x = Math.max(0, Math.min(y, maxX));
+            track.style.transform = "";
+            track.style.left = `${-x}px`;
+            rafId = 0;
+        };
 
-    measure();
-    render();
+        const handleScroll = () => {
+            if (!rafId) {
+                rafId = requestAnimationFrame(render);
+            }
+        };
 
-    const resizeObserver = new ResizeObserver(measure);
-    resizeObserver.observe(track);
+        measure();
+        render();
 
-    window.addEventListener("resize", measure);
-    window.addEventListener("scroll", handleScroll, { passive: true });
+        const resizeObserver = new ResizeObserver(measure);
+        resizeObserver.observe(track);
 
-    return () => {
-      window.removeEventListener("resize", measure);
-      window.removeEventListener("scroll", handleScroll);
-      if (rafId) cancelAnimationFrame(rafId);
-      resizeObserver.disconnect();
-    };
-  }, [enabled, onMeasure, trackRef, wrapperRef]);
+        window.addEventListener("resize", measure);
+        window.addEventListener("scroll", handleScroll, { passive: true });
+
+        return () => {
+            window.removeEventListener("resize", measure);
+            window.removeEventListener("scroll", handleScroll);
+            if (rafId) cancelAnimationFrame(rafId);
+            resizeObserver.disconnect();
+        };
+    }, [enabled, onMeasure, trackRef, wrapperRef]);
 }
