@@ -1,13 +1,13 @@
 import ContactExperience from "./ContactExperience";
 
 export const metadata = {
-  title: "Contact | TechSeekho",
-  description:
-    "Contact TechSeekho for course help, enrollment support, mentorship guidance, and general queries.",
+    title: "Contact | Techseekho",
+    description:
+        "Contact Techseekho for program enrollment, school partnerships, and general queries. Based in Indore, Madhya Pradesh.",
 };
 
 const ContactPage = () => {
-  return <ContactExperience />;
+    return <ContactExperience />;
 };
 
 export default ContactPage;
