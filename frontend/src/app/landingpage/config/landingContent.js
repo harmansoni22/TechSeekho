@@ -105,14 +105,23 @@ export const CALL_TO_ACTION_CONTENT = {
 };
 
 export async function COURSES_FOR_LANDING_PAGE() {
-    const courses = await api("/courses");
-    // const COURSE = []
+    try {
+        if (!api("/courses")) console.error("Unable to fetch http://localhost:4000/courses");
+        const courses = await api("/courses");
+        if (!courses) console.error("No courses found");
+        const COURSE = []
 
-    // courses.map((course) => {
-    //     COURSE.push(course);
-    // })
+        courses.map((course) => {
+            COURSE.push(course);
+        });
 
-    // return COURSE;
+        console.log("Courses found. API working here.")
 
-    return Array.isArray(courses) ? courses : [];
+        return COURSE;
+
+        // return Array.isArray(courses) ? courses : [];
+    } catch (error) {
+        console.error("Error fetching courses:", error);
+        return [];
+    }
 }

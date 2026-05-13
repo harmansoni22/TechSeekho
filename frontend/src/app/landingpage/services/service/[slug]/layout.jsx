@@ -1,5 +1,5 @@
 const serviceLayout = ({ children }) => {
-  return <>{children}</>;
+    return <>{children}</>;
 };
 
 export default serviceLayout;
