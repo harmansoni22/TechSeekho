@@ -2,8 +2,8 @@
 
 :root {
   /* Legacy tokens (kept for compatibility) */
-  --background: transparent;
-  --foreground: transparent;
+  --background: #f8fafc;
+  --foreground: #0f172a;
   scrollbar-width: none;
 
   /* Theme palette (light defaults) */
@@ -351,6 +351,36 @@ body {
 /* Slightly darker inputs inside the signup card */
 .signup-card input::placeholder {
   color: rgba(255, 255, 255, 0.25);
+}
+
+/* Keep dark auth input styling when browser autofill/recommended values are applied */
+input[id^="login-"],
+input[id^="signup-"] {
+  color-scheme: dark;
+}
+
+input[id^="login-"]:-webkit-autofill,
+input[id^="login-"]:-webkit-autofill:hover,
+input[id^="login-"]:-webkit-autofill:focus,
+input[id^="login-"]:autofill,
+input[id^="signup-"]:-webkit-autofill,
+input[id^="signup-"]:-webkit-autofill:hover,
+input[id^="signup-"]:-webkit-autofill:focus,
+input[id^="signup-"]:autofill {
+  -webkit-text-fill-color: #ffffff !important;
+  caret-color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  -webkit-box-shadow: 0 0 0 1000px rgba(255, 255, 255, 0.04) inset !important;
+  box-shadow: 0 0 0 1000px rgba(255, 255, 255, 0.04) inset !important;
+  background-color: transparent !important;
+  transition:
+    background-color 99999s ease-out 0s,
+    color 99999s ease-out 0s !important;
+}
+
+input[id^="login-"]:-webkit-autofill::first-line,
+input[id^="signup-"]:-webkit-autofill::first-line {
+  color: #ffffff !important;
 }
 
 /* Ensure the page background has subtle vignettes like reference */
