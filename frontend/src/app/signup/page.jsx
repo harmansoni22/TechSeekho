@@ -8,7 +8,6 @@ import LoginNavbar from "@/app/login/components/LoginNavbar";
 import Badge from "../components/ui/Badge";
 import CustomScroll from "../landingpage/components/CustomScrollBar";
 import GradientText from "../landingpage/components/Effects/TextEffects/GradientText";
-import SocialLoginButtons from "../login/components/SocialLoginButtons";
 
 const SignUp = () => {
 	return (

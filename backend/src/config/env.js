@@ -4,9 +4,16 @@ import dotenv from "dotenv";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const envPath = path.resolve(__dirname, "../../.env");
+// Prefer repo root .env (TechSeekhoApp/.env), fallback to backend-relative .env
+const repoRootEnvPath = path.resolve(__dirname, "../../../.env");
+const backendEnvPath = path.resolve(__dirname, "../../.env");
 
-dotenv.config({ path: envPath });
+dotenv.config({ path: repoRootEnvPath });
+// If not found, try fallback path
+if (!process.env.JWT_SECRET) {
+	dotenv.config({ path: backendEnvPath });
+}
+
 
 function parseBoolean(value, fallback = false) {
 	if (typeof value !== "string") return fallback;
@@ -15,6 +22,12 @@ function parseBoolean(value, fallback = false) {
 }
 
 function parsePort(value, fallback = 4000) {
+	const parsed = Number.parseInt(value ?? "", 10);
+	if (!Number.isInteger(parsed) || parsed <= 0) return fallback;
+	return parsed;
+}
+
+function parsePositiveInteger(value, fallback) {
 	const parsed = Number.parseInt(value ?? "", 10);
 	if (!Number.isInteger(parsed) || parsed <= 0) return fallback;
 	return parsed;
@@ -57,6 +70,23 @@ const env = Object.freeze({
 	hfToken: process.env.HF_TOKEN || "",
 	hfModel: process.env.HF_MODEL || "Qwen/Qwen2.5-7B-Instruct",
 	hfProvider: process.env.HF_PROVIDER || "together",
+	jwtSecret: process.env.JWT_SECRET || "",
+	jwtExpiresIn: process.env.JWT_EXPIRES_IN || "7d",
+	otpExpiresMinutes: parsePositiveInteger(process.env.OTP_EXPIRES_MINUTES, 10),
+	rateLimitWindowMs: parsePositiveInteger(
+		process.env.RATE_LIMIT_WINDOW_MS,
+		60_000,
+	),
+	rateLimitMax: parsePositiveInteger(process.env.RATE_LIMIT_MAX, 120),
+	authRateLimitMax: parsePositiveInteger(process.env.AUTH_RATE_LIMIT_MAX, 10),
+	exposeOtpInResponse: parseBoolean(
+		process.env.EXPOSE_OTP_IN_RESPONSE,
+		!isProduction,
+	),
 });
+
+if (isProduction && !env.jwtSecret) {
+	throw new Error("JWT_SECRET must be set in production.");
+}
 
 export default env;

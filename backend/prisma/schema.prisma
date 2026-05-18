@@ -1,6 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -9,19 +6,695 @@ datasource db {
   provider = "postgresql"
 }
 
-model Course {
+//
+// ENUMS
+//
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+enum InstitutionType {
+  SCHOOL
+  COLLEGE
+  GOVERNMENT
+  PRIVATE
+}
+
+enum EnrollmentStatus {
+  OPEN
+  CLOSED
+  UPCOMING
+}
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  LATE
+}
+
+enum AssignmentStatus {
+  PENDING
+  SUBMITTED
+  REVIEWED
+}
+
+enum ContactType {
+  EMAIL
+  PHONE
+}
+
+enum OtpPurpose {
+  SIGNUP
+  LOGIN
+}
+
+enum AssessmentType {
+  QUIZ
+  TEST
+  EXAM
+  PROJECT
+}
+
+enum AssessmentStatus {
+  DRAFT
+  PUBLISHED
+  CLOSED
+}
+
+//
+// USER + RBAC
+//
+
+model User {
   id                String   @id @default(cuid())
-  slug              String   @unique
-  title             String
-  shortDescription  String
-  description       String
-  bannerImage       String
-  startsAt          DateTime
-  endDate           DateTime
-  enrollmentStatus  String   // 'open', 'closed'
-  price             Int      // in paisa/cents
+
+  fullName          String
+
+  email             String?  @unique
+  phone             String?  @unique
+
+  passwordHash      String?
+
+  avatarUrl         String?
+
+  isEmailVerified   Boolean  @default(false)
+  isPhoneVerified   Boolean  @default(false)
+
+  status            UserStatus @default(ACTIVE)
+
+  lastLoginAt       DateTime?
+
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
+  roleAssignments   RoleAssignment[]
+
+  studentProfile    StudentProfile?
+  trainerProfile    TrainerProfile?
+  adminProfile      AdminProfile?
+
+  announcements     Announcement[] @relation("AnnouncementAuthor")
+  contactVerifications ContactVerification[]
+
+  @@index([email])
+  @@index([phone])
+}
+
+model ContactVerification {
+  id             String @id @default(cuid())
+
+  userId         String?
+  contactType    ContactType
+  contactValue   String
+  purpose        OtpPurpose
+
+  otpHash        String
+  expiresAt      DateTime
+  consumedAt     DateTime?
+  attempts       Int @default(0)
+  maxAttempts    Int @default(5)
+
+  createdAt      DateTime @default(now())
+
+  user           User? @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([contactType, contactValue, purpose, consumedAt])
+  @@index([expiresAt])
+}
+
+model Role {
+  id          String @id @default(cuid())
+
+  name        String @unique
+  description String?
+
+  assignments RoleAssignment[]
+}
+
+model RoleAssignment {
+  id             String @id @default(cuid())
+
+  userId         String
+  roleId         String
+
+  institutionId  String?
+
+  assignedAt     DateTime @default(now())
+
+  user           User @relation(fields: [userId], references: [id])
+  role           Role @relation(fields: [roleId], references: [id])
+  institution    Institution? @relation(fields: [institutionId], references: [id])
+
+  @@unique([userId, roleId, institutionId])
+}
+
+//
+// INSTITUTIONS
+//
+
+model Institution {
+  id              String @id @default(cuid())
+
+  name            String
+
+  type            InstitutionType
+
+  city            String?
+  state           String?
+
+  address         String?
+
+  contactEmail    String?
+  contactPhone    String?
+
+  isActive        Boolean @default(true)
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  batches         Batch[]
+
+  roleAssignments RoleAssignment[]
+
+  assignments     Assignment[]
+  submissions     Submission[]
+  assessments     Assessment[]
+  announcements   Announcement[]
+}
+
+//
+// COURSES
+//
+
+model Course {
+  id                String   @id @default(cuid())
+
+  slug              String   @unique
+
+  title             String
+
+  shortDescription  String
+  description       String
+
+  bannerImage       String?
+
+  enrollmentStatus  EnrollmentStatus @default(OPEN)
+
+  price             Int @default(0)
+
+  startsAt          DateTime?
+  endDate           DateTime?
+
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  batches           Batch[]
+
+  assignments       Assignment[]
+
+  assessments       Assessment[]
+
+  learningPaths     LearningPath[]
+
   @@index([slug])
+}
+
+//
+// BATCHES
+//
+
+model Batch {
+  id               String @id @default(cuid())
+
+  name             String
+
+  institutionId    String
+  courseId         String
+
+  startDate        DateTime
+  endDate          DateTime?
+
+  isActive         Boolean @default(true)
+
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  institution      Institution @relation(fields: [institutionId], references: [id])
+  course           Course @relation(fields: [courseId], references: [id])
+
+  students         StudentProfile[]
+
+  trainers         BatchTrainer[]
+
+  assignments      Assignment[]
+
+  assessments      Assessment[]
+
+  attendances      Attendance[]
+
+  announcements    Announcement[]
+}
+
+//
+// STUDENTS
+//
+
+model StudentProfile {
+  id                 String @id @default(cuid())
+
+  userId             String @unique
+
+  enrollmentNumber   String?
+
+  currentBatchId     String?
+
+  joinedAt           DateTime @default(now())
+
+  user               User @relation(fields: [userId], references: [id])
+  currentBatch       Batch? @relation(fields: [currentBatchId], references: [id])
+
+  submissions        Submission[]
+  assessmentSubmissions AssessmentSubmission[]
+
+  attendanceRecords  Attendance[]
+
+  pathEnrollments    PathEnrollment[]
+  streak             StudentStreak?
+  dailyGoals         DailyGoal[]
+  activities         StudentActivity[]
+  achievements       UserAchievement[]
+}
+
+//
+// TRAINERS
+//
+
+model TrainerProfile {
+  id                String @id @default(cuid())
+
+  userId            String @unique
+
+  specialization    String?
+
+  bio               String?
+
+  experienceYears   Int?
+
+  joinedAt          DateTime @default(now())
+
+  user              User @relation(fields: [userId], references: [id])
+
+  batches           BatchTrainer[]
+
+  assignments       Assignment[]
+
+  assessments       Assessment[]
+}
+
+model BatchTrainer {
+  id          String @id @default(cuid())
+
+  batchId     String
+  trainerId   String
+
+  batch       Batch @relation(fields: [batchId], references: [id])
+  trainer     TrainerProfile @relation(fields: [trainerId], references: [id])
+
+  @@unique([batchId, trainerId])
+}
+
+//
+// ADMINS
+//
+
+model AdminProfile {
+  id            String @id @default(cuid())
+
+  userId        String @unique
+
+  designation   String?
+
+  joinedAt      DateTime @default(now())
+
+  user          User @relation(fields: [userId], references: [id])
+}
+
+//
+// ASSIGNMENTS
+//
+
+model Assignment {
+  id              String @id @default(cuid())
+
+  title           String
+
+  description     String?
+
+  institutionId   String
+
+  batchId         String
+  courseId        String
+
+  createdById     String
+
+  dueDate         DateTime?
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  institution     Institution @relation(fields: [institutionId], references: [id])
+  batch           Batch @relation(fields: [batchId], references: [id])
+  course          Course @relation(fields: [courseId], references: [id])
+  createdBy       TrainerProfile @relation(fields: [createdById], references: [id])
+
+  submissions     Submission[]
+
+  @@index([institutionId])
+  @@index([batchId])
+}
+
+model Submission {
+  id                String @id @default(cuid())
+
+  assignmentId      String
+  studentId         String
+
+  institutionId     String
+
+  submissionText    String?
+
+  fileUrl           String?
+
+  status            AssignmentStatus @default(PENDING)
+
+  submittedAt       DateTime?
+
+  reviewedAt        DateTime?
+
+  feedback          String?
+
+  createdAt         DateTime @default(now())
+
+  institution       Institution @relation(fields: [institutionId], references: [id])
+  assignment        Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  student           StudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([assignmentId, studentId])
+
+  @@index([institutionId])
+}
+
+//
+// ASSESSMENTS
+//
+
+model Assessment {
+  id              String @id @default(cuid())
+
+  title           String
+  description     String?
+
+  type            AssessmentType @default(QUIZ)
+  status          AssessmentStatus @default(DRAFT)
+
+  institutionId   String
+
+  batchId         String
+  courseId        String
+
+  createdById     String
+
+  maxScore        Int @default(100)
+
+  startsAt        DateTime?
+  dueDate         DateTime?
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  institution     Institution @relation(fields: [institutionId], references: [id])
+  batch           Batch @relation(fields: [batchId], references: [id])
+  course          Course @relation(fields: [courseId], references: [id])
+  createdBy       TrainerProfile @relation(fields: [createdById], references: [id])
+
+  submissions     AssessmentSubmission[]
+
+  @@index([institutionId])
+  @@index([batchId])
+}
+
+
+model AssessmentSubmission {
+  id                String @id @default(cuid())
+
+  assessmentId      String
+  studentId         String
+
+  answers           Json?
+  score             Int?
+  feedback          String?
+
+  submittedAt       DateTime?
+  reviewedAt        DateTime?
+
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  assessment        Assessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  student           StudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([assessmentId, studentId])
+}
+
+
+//
+// ATTENDANCE
+//
+
+model Attendance {
+  id              String @id @default(cuid())
+
+  batchId         String
+  studentId       String
+
+  date            DateTime
+
+  status          AttendanceStatus
+
+  markedAt        DateTime @default(now())
+
+  batch           Batch @relation(fields: [batchId], references: [id], onDelete: Restrict)
+  student         StudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([batchId, studentId, date])
+
+  @@index([batchId])
+  @@index([studentId])
+}
+
+//
+// ANNOUNCEMENTS
+//
+
+model Announcement {
+  id              String @id @default(cuid())
+
+  title           String
+  content         String
+
+  institutionId   String
+
+  batchId         String
+
+  authorId        String
+
+  createdAt       DateTime @default(now())
+
+  institution     Institution @relation(fields: [institutionId], references: [id])
+  batch           Batch @relation(fields: [batchId], references: [id])
+  author          User @relation("AnnouncementAuthor", fields: [authorId], references: [id])
+
+  @@index([institutionId])
+  @@index([batchId])
+}
+
+//
+// STUDENT PROGRESS TRACKING
+//
+
+model LearningPath {
+  id              String @id @default(cuid())
+
+  title           String
+  description     String?
+
+  courseId        String
+  institutionId   String?
+
+  estimatedHours  Int?
+
+  difficulty      String? // BEGINNER, INTERMEDIATE, ADVANCED
+
+  isActive        Boolean @default(true)
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  course          Course @relation(fields: [courseId], references: [id])
+
+  modules         LearningModule[]
+  enrollments     PathEnrollment[]
+}
+
+model LearningModule {
+  id              String @id @default(cuid())
+
+  title           String
+  description     String?
+
+  pathId          String
+  order           Int
+
+  content         String?
+  videoUrl        String?
+  duration        Int? // in minutes
+
+  isRequired      Boolean @default(true)
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  path            LearningPath @relation(fields: [pathId], references: [id])
+
+  progress        ModuleProgress[]
+}
+
+model PathEnrollment {
+  id              String @id @default(cuid())
+
+  studentId       String
+  pathId          String
+
+  enrolledAt      DateTime @default(now())
+  completedAt     DateTime?
+
+  progress        Float @default(0) // 0-100
+
+  student         StudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  path            LearningPath @relation(fields: [pathId], references: [id], onDelete: Cascade)
+
+  moduleProgress  ModuleProgress[]
+
+  @@unique([studentId, pathId])
+}
+
+model ModuleProgress {
+  id              String @id @default(cuid())
+
+  enrollmentId    String
+  moduleId        String
+
+  startedAt       DateTime?
+  completedAt     DateTime?
+
+  progress        Float @default(0) // 0-100
+
+  enrollment      PathEnrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  module          LearningModule @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+
+  @@unique([enrollmentId, moduleId])
+}
+
+//
+// STUDENT ENGAGEMENT & GAMIFICATION
+//
+
+model StudentStreak {
+  id              String @id @default(cuid())
+
+  studentId       String @unique
+
+  currentStreak   Int @default(0)
+  longestStreak   Int @default(0)
+
+  lastActiveDate  DateTime?
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  student         StudentProfile @relation(fields: [studentId], references: [id])
+}
+
+model DailyGoal {
+  id              String @id @default(cuid())
+
+  studentId       String
+
+  date            DateTime
+
+  lessonsTarget   Int @default(1)
+  lessonsCompleted Int @default(0)
+
+  minutesTarget   Int @default(30)
+  minutesSpent    Int @default(0)
+
+  isCompleted     Boolean @default(false)
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  student         StudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, date])
+}
+
+model StudentActivity {
+  id              String @id @default(cuid())
+
+  studentId       String
+
+  type            String // LESSON_COMPLETED, ASSIGNMENT_SUBMITTED, COURSE_ENROLLED, etc.
+
+  description     String
+
+  metadata        Json? // Additional data about the activity
+
+  createdAt       DateTime @default(now())
+
+  student         StudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
+}
+
+model Achievement {
+  id              String @id @default(cuid())
+
+  title           String
+  description     String
+
+  icon            String?
+  badgeColor      String?
+
+  points          Int @default(0)
+
+  criteria        Json? // Rules for unlocking
+
+  createdAt       DateTime @default(now())
+
+  userAchievements UserAchievement[]
+}
+
+model UserAchievement {
+  id              String @id @default(cuid())
+
+  studentId       String
+  achievementId   String
+
+  unlockedAt      DateTime @default(now())
+
+  student         StudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  achievement     Achievement @relation(fields: [achievementId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, achievementId])
 }

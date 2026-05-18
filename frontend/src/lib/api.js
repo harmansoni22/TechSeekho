@@ -63,16 +63,4 @@ export async function api(path, options = {}) {
 }
 
 
-// Backward compatibility exports (no localStorage token anymore)
-export function setAuthToken(_token) {
-	// intentionally no-op
-}
-
-export function removeAuthToken() {
-	// intentionally no-op
-}
-
-export function getAuthToken() {
-	return null;
-}
 

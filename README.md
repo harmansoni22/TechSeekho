@@ -1,111 +1,346 @@
 # TechSeekhoApp
 
-TechSeekho is a future-skills education platform for school students aged 10–18. This monorepo powers the TechSeekho digital experience behind TechSeekho.com, including the public marketing site, course catalog, and the landing-page AI assistant.
+TechSeekhoApp is the operational platform powering TechSeekho and Koshalyam Learning Solutions Pvt. Ltd. institutional skilling programs across schools, workshops, and training centers.
 
-The platform is built to showcase and support hands-on programs in:
+The platform is designed to manage:
 
-- AI and machine learning
-- Robotics engineering
-- Drone technology
-- Internet of Things (IoT)
-- Coding and future-ready skills
+- institutional training operations
+- batch workflows
+- trainer coordination
+- student onboarding
+- attendance tracking
+- assignments and submissions
+- operational reporting
+- dashboard visibility
+- audit and projection-based reporting
 
-TechSeekho is designed for parents, school leaders, and education departments looking to give students real-world, project-based learning that aligns with NEP 2020 and high-demand career pathways.
+TechSeekho programs focus on future-ready domains including:
 
-## Why This Project Matters
+- Artificial Intelligence
+- Robotics
+- Drone Technology
+- IoT
+- Coding and Computational Thinking
 
-TechSeekho is not just a demo app. It is a branded learning product for a regional education initiative with real program positioning:
+---
 
-- 100% hands-on learning with real robots, drones, and AI systems
-- NEP 2020 certified programs built for school adoption
-- Career-mapped courses aligned to 2030 technology jobs
-- 50+ competition wins by students across Madhya Pradesh
-- School delivery model with labs, equipment, and trainers brought to campus
-- Trusted by 120+ schools and 5,000+ students in the region
+# Platform Philosophy
 
-## What This Repo Contains
+TechSeekhoApp is NOT a generic consumer LMS.
 
-- `frontend/`: Next.js marketing site, landing page, course pages, dashboard shell, auth entry flows, and AI assistant UI
-- `backend/`: Express API, Prisma course catalog, AI assistant endpoint, health checks, and production-ready middleware
-- `package.json`: npm workspace orchestration and shared scripts
-- `turbo.json`: turbo task pipeline for local development and build coordination
+The system is designed as:
 
-## Product Features
+- an institutional operations platform
+- a training workflow management system
+- a batch-centric education delivery system
 
-- Public landing experience at `/landingpage`
-- Dynamic course catalog and course detail pages
-- AI assistant popup for questions like "What program fits my child?"
-- Backend-grounded AI replies seeded with course catalog data
-- Smooth animated UI with GSAP, Framer Motion, and Lenis scrolling
-- Dashboard shell and auth pages for future student/admin experiences
+The platform prioritizes:
 
-## Tech Stack
+- operational clarity
+- scalability across institutions
+- trainer accountability
+- reporting workflows
+- role-based access control
+- maintainable architecture
 
-- Monorepo: npm workspaces, Turbo
-- Frontend: Next.js 16 App Router, React 19, Tailwind CSS v4
-- Motion: GSAP, Framer Motion, Lenis
-- Backend: Express 5, Node.js ESM, Prisma, PostgreSQL
-- AI: Hugging Face Inference via `@huggingface/inference`
-- Tooling: Biome, Nodemon, Prisma
+---
 
-## Deployment
+# Real-World Operational Context
 
-This repo is the codebase behind the deployed TechSeekho marketing experience at TechSeekho.com. The project is intended as a production-facing web presence rather than a local-only prototype.
+The platform supports hybrid delivery realities common in regional educational ecosystems.
 
-## Architecture Overview
+Examples:
 
-### Frontend
+- workshops officially associated with schools may be delivered from central training centers
+- schools may lack hardware or internet infrastructure
+- external stakeholders may require curated presentation dashboards
+- operational data and reporting projections must remain separated
 
-- Public landing page at `/landingpage`
-- Course pages and enrollment-focused marketing sections
-- AI assistant popup calling backend `POST /ai/chat`
-- Redirects `/` to `/landingpage` or `/dashboard` based on authentication state
+Because of this, the platform distinguishes between:
 
-### Backend
+- raw operational data
+- projection/presentation reporting
+- audit-tracked administrative overrides
 
-- Course APIs:
-  - `GET /courses`
-  - `GET /courses/:slug`
-- Health endpoint:
-  - `GET /health`
-- AI chat endpoint:
-  - `POST /ai/chat`
-- Uses Prisma to read course data from PostgreSQL
-- Builds system prompts that ground AI replies in the TechSeekho course catalog
+---
 
-## High-Level Request Flow
+# Primary Roles
 
-### Course Data
+## Super Admin
 
-1. Frontend calls `api("/courses")`
-2. Backend route reaches the courses controller
-3. Controller uses Prisma service methods
-4. Prisma queries the PostgreSQL `Course` records
+Global system visibility and approval authority.
 
-### AI Assistant
+Responsibilities:
 
-1. Landing page sends user input to `POST /ai/chat`
-2. Backend validates the request
-3. AI service builds a course-aware prompt
-4. Backend sends the prompt to Hugging Face hosted inference
-5. Assistant text is returned to the landing page
+- institution oversight
+- reporting projections
+- approval workflows
+- audit visibility
+- analytics
 
-## Notes for Contributors
+---
 
-- The AI assistant is grounded in prompt context, not a full fine-tuning or RAG system
-- Chat history is not persisted when the popup closes
-- The frontend currently surfaces backend errors in development for debugging
-- The Prisma schema suggests `price` may be stored as paisa/cents, while current UI/copy treats it as INR; that should be normalized in future work
+## Admin
 
-## Recommended Read Order
+Institution-level operational management.
 
-1. `package.json`
-2. `turbo.json`
-3. `frontend/README.md`
-4. `backend/README.md`
+Responsibilities:
 
-## Documentation Map
+- batch creation
+- trainer assignment
+- student onboarding
+- attendance oversight
+- report generation
 
-- Shared overview: this file and `README.txt`
-- Frontend guide: `frontend/README.md`, `frontend/README.txt`
-- Backend guide: `backend/README.md`, `backend/README.txt`
+---
+
+## Institution Coordinator
+
+External/institution-facing visibility role.
+
+Responsibilities:
+
+- viewing official reports
+- tracking workshop progress
+- monitoring institutional metrics
+
+This role only accesses presentation/projection data.
+
+---
+
+## Trainer
+
+Operational execution role.
+
+Responsibilities:
+
+- attendance marking
+- daily operational reports
+- assignment workflows
+- student progress updates
+- workshop delivery tracking
+
+---
+
+## Student
+
+Learner-facing role.
+
+Responsibilities:
+
+- assignments
+- submissions
+- modules
+- attendance visibility
+- announcements
+
+---
+
+# System Hierarchy
+
+The platform is institution-scoped and batch-centric.
+
+Core hierarchy:
+
+```txt
+Institution
+→ Batch
+→ Trainers
+→ Students
+→ Attendance
+→ Assignments
+→ Reports
+→ Projections
+```
+
+Students are subordinate to institutions and batches rather than independent consumer accounts.
+
+---
+
+# Monorepo Structure
+
+## frontend/
+
+Next.js frontend application containing:
+
+- landing pages
+- dashboard UI
+- role-based dashboards
+- operational workflows
+- AI assistant UI
+- institutional reporting views
+
+---
+
+## backend/
+
+Express.js backend containing:
+
+- RBAC middleware
+- operational APIs
+- attendance workflows
+- reporting/projection systems
+- audit logging
+- AI endpoints
+- Prisma services
+
+---
+
+## prisma/
+
+Database schema and relational models for:
+
+- institutions
+- batches
+- users
+- attendance
+- assignments
+- reporting
+- audit logs
+- projections
+
+---
+
+# Tech Stack
+
+## Frontend
+
+- Next.js 16 App Router
+- React 19
+- Tailwind CSS v4
+- GSAP
+- Framer Motion
+- Lenis
+
+---
+
+## Backend
+
+- Node.js ESM
+- Express 5
+- Prisma ORM
+- PostgreSQL
+
+---
+
+## Tooling
+
+- Turbo
+- npm workspaces
+- Biome
+- Nodemon
+
+---
+
+# Architectural Principles
+
+## PostgreSQL is the operational source of truth
+
+Core operational entities must remain relational and auditable.
+
+---
+
+## Projection Reporting Layer
+
+Presentation/reporting data must never overwrite raw operational records.
+
+The platform separates:
+
+- operational truth
+- presentation projections
+- audit logs
+
+---
+
+## Auditability
+
+Sensitive actions must be append-only and traceable.
+
+Examples:
+
+- attendance projection changes
+- report approvals
+- administrative overrides
+
+---
+
+## RBAC and Scoped Authorization
+
+Every backend query should be:
+
+- role-scoped
+- institution-scoped
+- batch-aware
+
+Avoid:
+
+- flat role strings
+- client-controlled authorization
+- unrestricted data access
+
+---
+
+# Current Product Areas
+
+## Public Experience
+
+- landing pages
+- course discovery
+- enrollment funnels
+- AI assistant
+
+---
+
+## Operational Platform
+
+- dashboard shell
+- RBAC workflows
+- attendance systems
+- trainer reporting
+- student management
+- projection dashboards
+
+---
+
+# AI Assistant
+
+The AI assistant currently uses:
+
+- prompt grounding
+- course catalog context
+- backend-generated system prompts
+
+It is NOT yet:
+
+- persistent-memory based
+- RAG-powered
+- fine-tuned
+
+---
+
+# Contributor Guidance
+
+When contributing:
+
+- preserve operational/audit integrity
+- avoid leaking projection data into analytics
+- avoid business logic inside routes
+- prefer modular services
+- keep authorization centralized
+- prioritize maintainability over feature quantity
+
+Avoid treating the platform as:
+
+- a social app
+- generic LMS
+- consumer-first edtech product
+
+---
+
+# Recommended Read Order
+
+1. package.json
+2. turbo.json
+3. prisma/schema.prisma
+4. backend/README.md
+5. frontend/README.md
