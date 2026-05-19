@@ -9,6 +9,7 @@ import { signIn, getSession } from "next-auth/react";
 import { useState } from "react";
 import SocialLoginButtons from "@/app/login/components/SocialLoginButtons";
 import { api } from "@/lib/api";
+import { resolveRoleDestination } from "@/lib/roleRouter";
 import { validateLoginInput } from "./validators/login.validator";
 
 const fieldVariant = {
@@ -72,11 +73,14 @@ const LoginForm = () => {
 
             const session = await getSession();
             const roles = session?.user?.roles ?? [];
-            const destination = roles.includes("MENTOR")
-                ? "/dashboard/mentor"
-                : "/dashboard/student";
+            const roleDestination = resolveRoleDestination(roles);
 
-            router.push(next || destination);
+            if (!roleDestination && roles.length === 0) {
+                // Session not yet populated — fall through to /dashboard which will re-resolve.
+                console.warn("[LoginForm] Session roles empty after signIn, falling back to /dashboard");
+            }
+
+            router.push(next || roleDestination || "/dashboard");
         } catch (err) {
             setError(err.message || "Login failed. Try again.");
         } finally {

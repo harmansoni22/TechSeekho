@@ -2,11 +2,50 @@ import prisma from "../config/db.js";
 import { AppError } from "../utils/appError.js";
 import { getStudentProfileOrThrow, isPrivileged } from "./access.service.js";
 
+function getAccessibleInstitutionIds(user) {
+	return (user.roleAssignments || [])
+		.map((a) => a.institutionId)
+		.filter(Boolean);
+}
+
+function userHasInstitutionAccess(user, institutionId) {
+	if (!institutionId) return false;
+	return getAccessibleInstitutionIds(user).includes(institutionId);
+}
+
+// Enforces who may create/modify a learning path or its modules.
+// - SUPER_ADMIN: always allowed
+// - institutionId set: user must have a role assignment for that institution
+// - institutionId null (global path): only SUPER_ADMIN
+function assertCanManageLearningPath(user, institutionId) {
+	if (isPrivileged(user)) return;
+
+	if (!institutionId) {
+		throw new AppError(
+			"Only super admin can manage global learning paths",
+			403,
+		);
+	}
+
+	if (!userHasInstitutionAccess(user, institutionId)) {
+		throw new AppError("Institution access denied", 403);
+	}
+}
+
 export async function listLearningPaths(user, filters = {}) {
 	const where = {};
 	if (filters.courseId) where.courseId = filters.courseId;
 	if (!isPrivileged(user) && user.roles.includes("STUDENT")) {
 		where.isActive = true;
+	}
+
+	// Scope non-super-admins to global paths + paths in their institutions.
+	if (!isPrivileged(user)) {
+		const institutionIds = getAccessibleInstitutionIds(user);
+		where.OR = [
+			{ institutionId: null },
+			{ institutionId: { in: institutionIds } },
+		];
 	}
 
 	return prisma.learningPath.findMany({
@@ -36,12 +75,15 @@ export async function createLearningPath(user, payload) {
 		throw new AppError("Title and courseId are required", 400);
 	}
 
+	const targetInstitutionId = institutionId || null;
+	assertCanManageLearningPath(user, targetInstitutionId);
+
 	return prisma.learningPath.create({
 		data: {
 			title,
 			description: description || null,
 			courseId,
-			institutionId: institutionId || null,
+			institutionId: targetInstitutionId,
 			estimatedHours: estimatedHours ?? null,
 			difficulty: difficulty || null,
 		},
@@ -54,8 +96,13 @@ export async function createLearningModule(user, pathId, payload) {
 		throw new AppError("Insufficient permissions", 403);
 	}
 
-	const path = await prisma.learningPath.findUnique({ where: { id: pathId } });
+	const path = await prisma.learningPath.findUnique({
+		where: { id: pathId },
+		select: { id: true, institutionId: true },
+	});
 	if (!path) throw new AppError("Learning path not found", 404);
+
+	assertCanManageLearningPath(user, path.institutionId);
 
 	if (!payload.title) throw new AppError("Module title is required", 400);
 
@@ -86,8 +133,11 @@ export async function updateLearningModule(user, moduleId, payload) {
 
 	const module = await prisma.learningModule.findUnique({
 		where: { id: moduleId },
+		include: { path: { select: { institutionId: true } } },
 	});
 	if (!module) throw new AppError("Learning module not found", 404);
+
+	assertCanManageLearningPath(user, module.path.institutionId);
 
 	return prisma.learningModule.update({
 		where: { id: moduleId },
@@ -112,6 +162,11 @@ export async function enrollInLearningPath(user, pathId) {
 
 	if (!path || !path.isActive) {
 		throw new AppError("Learning path not found", 404);
+	}
+
+	// Students may only enroll in global paths or paths in an institution they belong to.
+	if (path.institutionId && !userHasInstitutionAccess(user, path.institutionId)) {
+		throw new AppError("Learning path not available for your institution", 403);
 	}
 
 	return prisma.pathEnrollment.upsert({

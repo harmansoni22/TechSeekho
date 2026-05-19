@@ -19,7 +19,7 @@ const ROLE_DEFS = [
 	{ name: "SUPER_ADMIN",          description: "Full platform access" },
 	{ name: "ADMIN",                description: "Institution management access" },
 	{ name: "TRAINER",              description: "Trainer access" },
-	{ name: "INSTITUTE_CORDINATOR", description: "Institute Coordinator access" },
+	{ name: "INSTITUTION_COORDINATOR", description: "Institute Coordinator access" },
 	{ name: "STUDENT",              description: "Student access" },
 ];
 
@@ -73,7 +73,7 @@ const USER_DEFS = [
 		fullName:       "Hamza Butt",
 		email:          "coordinator.lahore@techseekho.dev",
 		password:       "Hamza@TechSeekho2026",
-		role:           "INSTITUTE_CORDINATOR",
+		role:           "INSTITUTION_COORDINATOR",
 		institutionKey: "lahore",
 	},
 	{
@@ -140,7 +140,7 @@ const USER_DEFS = [
 		fullName:       "Nadia Iqbal",
 		email:          "coordinator.karachi@techseekho.dev",
 		password:       "Nadia@TechSeekho2026",
-		role:           "INSTITUTE_CORDINATOR",
+		role:           "INSTITUTION_COORDINATOR",
 		institutionKey: "karachi",
 	},
 	{
@@ -358,7 +358,7 @@ async function main() {
 			});
 		}
 
-		// INSTITUTE_CORDINATOR and SUPER_ADMIN have no dedicated profile model.
+		// INSTITUTION_COORDINATOR and SUPER_ADMIN have no dedicated profile model.
 
 		userMap[def.email] = { user, profile };
 		console.log(
@@ -420,7 +420,7 @@ async function main() {
 	console.log("  superadmin@techseekho.dev          Ahmad@TechSeekho2026\n");
 	console.log("TechSeekho Academy Lahore");
 	console.log("  admin.lahore@techseekho.dev         Zara@TechSeekho2026   [ADMIN]");
-	console.log("  coordinator.lahore@techseekho.dev   Hamza@TechSeekho2026  [INSTITUTE_CORDINATOR]");
+	console.log("  coordinator.lahore@techseekho.dev   Hamza@TechSeekho2026  [INSTITUTION_COORDINATOR]");
 	console.log("  trainer1.lahore@techseekho.dev      Faisal@TechSeekho2026 [TRAINER]");
 	console.log("  trainer2.lahore@techseekho.dev      Sana@TechSeekho2026   [TRAINER]");
 	console.log("  student1.lahore@techseekho.dev      Ali@TechSeekho2026    [STUDENT] LHR-2026-001");
@@ -429,7 +429,7 @@ async function main() {
 	console.log("  student4.lahore@techseekho.dev      Fatima@TechSeekho2026 [STUDENT] LHR-2026-004\n");
 	console.log("TechSeekho Academy Karachi");
 	console.log("  admin.karachi@techseekho.dev        Omar@TechSeekho2026   [ADMIN]");
-	console.log("  coordinator.karachi@techseekho.dev  Nadia@TechSeekho2026  [INSTITUTE_CORDINATOR]");
+	console.log("  coordinator.karachi@techseekho.dev  Nadia@TechSeekho2026  [INSTITUTION_COORDINATOR]");
 	console.log("  trainer.karachi@techseekho.dev      Tariq@TechSeekho2026  [TRAINER]");
 	console.log("  student1.karachi@techseekho.dev     Maryam@TechSeekho2026 [STUDENT] KHI-2026-001");
 	console.log("  student2.karachi@techseekho.dev     Usman@TechSeekho2026  [STUDENT] KHI-2026-002");

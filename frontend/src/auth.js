@@ -195,8 +195,21 @@ const authOptions = {
             if (typeof token.accessToken === "string" && token.accessToken && token.id) {
                 try {
                     const backendUser = await getUserFromBackend(token.accessToken);
-                    session.user.roles = backendUser.roles || [];
-                    session.user.avatarUrl = backendUser.avatarUrl;
+                    const freshRoles = backendUser?.roles;
+                    if (Array.isArray(freshRoles) && freshRoles.length > 0) {
+                        session.user.roles = freshRoles;
+                    } else if (Array.isArray(freshRoles) && freshRoles.length === 0) {
+                        // Backend returned empty roles. Keep JWT roles to avoid wiping valid
+                        // credentials due to a transient data or seeding inconsistency.
+                        console.warn(
+                            "[auth] Backend returned empty roles for authenticated user; " +
+                            "falling back to JWT roles:",
+                            token.roles,
+                        );
+                    }
+                    if (backendUser?.avatarUrl !== undefined) {
+                        session.user.avatarUrl = backendUser.avatarUrl;
+                    }
                 } catch (error) {
                     console.error("Failed to fetch fresh user data:", error);
                 }

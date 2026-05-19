@@ -1,4 +1,5 @@
 import { Router } from "express";
+import adminRoutes from "./admin.routes.js";
 import aiRoutes from "./ai.routes.js";
 import assessmentsRoutes from "./assessments.routes.js";
 import assignmentsRoutes from "./assignments.routes.js";
@@ -17,6 +18,7 @@ const router = Router();
 
 router.use("/health", healthRoutes);
 router.use("/auth", authRoutes);
+router.use("/admin", adminRoutes);
 router.use("/oauth", oauthRoutes);
 router.use("/courses", coursesRoutes);
 router.use("/assignments", assignmentsRoutes);
