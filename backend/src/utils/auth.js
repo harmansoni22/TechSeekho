@@ -98,9 +98,20 @@ export function generateOTP() {
 		.toString();
 }
 
+// HMAC-SHA256 with a server-side secret. Resists rainbow-table attacks if
+// the OTP table is exfiltrated, because the secret is required to verify a
+// guess. Replaces raw SHA-256 which was trivially reversible against a
+// 6-digit OTP space.
 export function hashOtp(otp) {
+	const key = env.otpHmacSecret || env.jwtSecret;
+	if (!key) {
+		// Loud failure: refuse to store reversible hashes.
+		throw new Error(
+			"OTP hashing requires OTP_HMAC_SECRET or JWT_SECRET to be set",
+		);
+	}
 	return crypto
-		.createHash("sha256")
+		.createHmac("sha256", key)
 		.update(String(otp))
 		.digest("hex");
 }
