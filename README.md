@@ -344,3 +344,7 @@ Avoid treating the platform as:
 3. prisma/schema.prisma
 4. backend/README.md
 5. frontend/README.md
+
+---
+
+# Note: The repository has been moved to the organisation's github profile. Feel free to open Organisation "TechSeekho"
