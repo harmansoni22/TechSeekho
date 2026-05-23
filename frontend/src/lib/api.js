@@ -1,6 +1,6 @@
 import { getSession } from "next-auth/react";
 
-const URL = process.env.NEXT_PUBLIC_BACKEND; // External backend
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND;
 
 /**
  * Central authenticated API client.
@@ -10,20 +10,19 @@ const URL = process.env.NEXT_PUBLIC_BACKEND; // External backend
  */
 export async function api(path, options = {}) {
 	const isAbsolutePath = /^https?:\/\//i.test(path);
-	const url = isAbsolutePath ? path : URL ? `${URL}${path}` : path;
+	const url = isAbsolutePath
+		? path
+		: BACKEND_URL
+			? `${BACKEND_URL}${path}`
+			: path;
 
-	console.log("[api] resolving session");
 	let token = null;
 	try {
 		const session = await getSession();
-		console.log("[api] session", session);
 		token = session?.accessToken ?? null;
-	} catch (e) {
-		// non-fatal: unauthenticated/SSR timing edge cases
-		console.error("[api] getSession failed", e);
+	} catch {
+		// Unauthenticated / SSR timing — proceed without token.
 	}
-
-	console.log("[api] request", url);
 
 	let res;
 	try {
@@ -37,18 +36,14 @@ export async function api(path, options = {}) {
 		});
 	} catch (err) {
 		const message = err instanceof Error ? err.message : "Unknown network error";
-		console.error(`[api] failed] Network error calling ${url}: ${message}`);
 		throw new Error(`Network error calling ${url}: ${message}`);
 	}
-
-	console.log("[api] response status", res.status);
 
 	if (!res.ok) {
 		const errorText = await res.text().catch(() => "");
 		throw new Error(`API error ${res.status}: ${errorText}`);
 	}
 
-	// Avoid hard crashes on empty/non-JSON responses.
 	const contentType = res.headers.get("content-type") || "";
 	if (contentType.includes("application/json")) {
 		return res.json();

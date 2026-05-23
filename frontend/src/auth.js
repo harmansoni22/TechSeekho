@@ -136,7 +136,10 @@ const authOptions = {
         }),
     ],
     callbacks: {
-        async jwt({ token, account, profile, user }) {
+        async jwt({ token, account, profile, user, trigger }) {
+            // First-issue path — populate from authorize/oauth exchange.
+            // After that, this callback runs on every session read; do nothing
+            // beyond what's necessary so we don't hammer the backend.
             if (account && user) {
                 if (account.type === "credentials") {
                     token.accessToken = user.accessToken;
@@ -177,6 +180,16 @@ const authOptions = {
 
                     token.picture = avatarUrl || token.picture || null;
                 }
+
+                // Stamp when we last reconciled with the backend so the
+                // session callback can throttle.
+                token.lastProfileFetchAt = Date.now();
+            }
+
+            // Allow client-driven refresh: useSession().update() sets
+            // trigger === "update".
+            if (trigger === "update") {
+                token.lastProfileFetchAt = 0;
             }
             return token;
         },
@@ -192,15 +205,30 @@ const authOptions = {
             session.providerAccountId = token.providerAccountId || null;
             session.idToken = token.idToken || null;
 
-            if (typeof token.accessToken === "string" && token.accessToken && token.id) {
+            // Backend profile is refreshed at most once per PROFILE_REFRESH_MS.
+            // Previously this fired on every session read — multiple times per
+            // page load. The JWT already carries roles, so a stale read window
+            // of a couple of minutes is acceptable and clients can force a
+            // refresh via useSession().update().
+            const PROFILE_REFRESH_MS = 2 * 60 * 1000;
+            const lastFetched = Number(token.lastProfileFetchAt) || 0;
+            const isStale = Date.now() - lastFetched > PROFILE_REFRESH_MS;
+
+            if (
+                isStale &&
+                typeof token.accessToken === "string" &&
+                token.accessToken &&
+                token.id
+            ) {
                 try {
                     const backendUser = await getUserFromBackend(token.accessToken);
                     const freshRoles = backendUser?.roles;
                     if (Array.isArray(freshRoles) && freshRoles.length > 0) {
                         session.user.roles = freshRoles;
+                        token.roles = freshRoles;
                     } else if (Array.isArray(freshRoles) && freshRoles.length === 0) {
-                        // Backend returned empty roles. Keep JWT roles to avoid wiping valid
-                        // credentials due to a transient data or seeding inconsistency.
+                        // Backend returned empty roles. Keep JWT roles to avoid wiping
+                        // valid credentials due to a transient data inconsistency.
                         console.warn(
                             "[auth] Backend returned empty roles for authenticated user; " +
                             "falling back to JWT roles:",
@@ -210,8 +238,10 @@ const authOptions = {
                     if (backendUser?.avatarUrl !== undefined) {
                         session.user.avatarUrl = backendUser.avatarUrl;
                     }
+                    token.lastProfileFetchAt = Date.now();
                 } catch (error) {
                     console.error("Failed to fetch fresh user data:", error);
+                    // Don't update the stamp on failure — retry next read.
                 }
             }
 
