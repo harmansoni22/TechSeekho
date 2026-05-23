@@ -395,6 +395,8 @@ model Submission {
   reviewedAt        DateTime?
 
   feedback          String?
+  score             Int?
+  maxScore          Int? @default(100)
 
   createdAt         DateTime @default(now())
 
@@ -697,4 +699,36 @@ model UserAchievement {
   achievement     Achievement @relation(fields: [achievementId], references: [id], onDelete: Cascade)
 
   @@unique([studentId, achievementId])
+}
+
+//
+// AUDIT LOG
+//
+// Minimal foundation: who did what to what, when. Not a full event store.
+// Designed for institutional accountability — disputes about attendance
+// edits, submission re-reviews, trainer reassignments, and institution
+// changes can be reconstructed from this table.
+//
+
+model AuditLog {
+  id             String   @id @default(cuid())
+
+  actorId        String?  // null only for system-originated events
+  actorRole      String?  // primary role at time of action
+
+  action         String   // e.g. "attendance.mark", "submission.review"
+  entityType     String   // e.g. "Attendance", "Submission", "Institution"
+  entityId       String?  // primary key of the affected row when known
+
+  institutionId  String?  // tenant tag for scoped queries
+
+  metadata       Json?    // small, sanitized snapshot — never raw payloads
+  ipAddress      String?
+  userAgent      String?
+
+  createdAt      DateTime @default(now())
+
+  @@index([actorId, createdAt])
+  @@index([institutionId, createdAt])
+  @@index([entityType, entityId])
 }

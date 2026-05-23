@@ -83,10 +83,47 @@ const env = Object.freeze({
 		process.env.EXPOSE_OTP_IN_RESPONSE,
 		!isProduction,
 	),
+
+	// --- Hardening additions ---
+	//
+	// Optional. If unset, the rate limiter falls back to in-memory which is
+	// fine for single-instance dev/staging but will not enforce limits across
+	// horizontally scaled instances.
+	redisUrl: process.env.REDIS_URL || "",
+
+	// Separate HMAC key for OTP hashes. If unset, derives from JWT_SECRET so
+	// existing deployments do not require new env wiring on day one. Override
+	// in production to allow rotating OTP secrets without invalidating JWTs.
+	otpHmacSecret: process.env.OTP_HMAC_SECRET || process.env.JWT_SECRET || "",
+
+	// Comma-separated hostnames (no scheme) accepted for client-supplied
+	// submission file URLs. Empty list ⇒ reject all external URLs until R2 is
+	// wired in. Add the R2 public bucket domain here once available.
+	trustedUploadHosts: parseOrigins(process.env.TRUSTED_UPLOAD_HOSTS || ""),
+
+	// Max upload size hint surfaced to the future presign endpoint. Bytes.
+	maxUploadBytes: parsePositiveInteger(
+		process.env.MAX_UPLOAD_BYTES,
+		20 * 1024 * 1024, // 20 MB
+	),
+
+	// Audit logging — default on. Turn off only for diagnostic scenarios.
+	auditLogEnabled: parseBoolean(process.env.AUDIT_LOG_ENABLED, true),
 });
 
 if (isProduction && !env.jwtSecret) {
 	throw new Error("JWT_SECRET must be set in production.");
+}
+
+if (isProduction && !env.otpHmacSecret) {
+	throw new Error("OTP_HMAC_SECRET (or JWT_SECRET) must be set in production.");
+}
+
+if (isProduction && !env.redisUrl) {
+	// Not fatal — but rate limiting will not be effective without it.
+	console.warn(
+		"[env] REDIS_URL is not set in production; rate limits will not be enforced across instances.",
+	);
 }
 
 export default env;
