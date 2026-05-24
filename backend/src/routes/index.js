@@ -12,6 +12,7 @@ import modulesRoutes from "./modules.routes.js";
 import oauthRoutes from "./oauth.routes.js";
 import productsRoutes from "./products.routes.js";
 import studentRoutes from "./student.routes.js";
+import uploadsRoutes from "./uploads.routes.js";
 import usersRoutes from "./users.routes.js";
 
 const router = Router();
@@ -29,6 +30,7 @@ router.use("/", managementRoutes);
 router.use("/products", productsRoutes);
 router.use("/ai", aiRoutes);
 router.use("/student", studentRoutes);
+router.use("/uploads", uploadsRoutes);
 router.use("/users", usersRoutes);
 
 export default router;
