@@ -4,9 +4,13 @@ import {
 	createAnnouncement,
 	createBatch,
 	createInstitution,
+	getBatchDetail,
 	listAnnouncements,
 	listBatches,
+	listInstitutionMembers,
 	listInstitutions,
+	removeStudentFromBatch,
+	removeTrainerFromBatch,
 	updateBatch,
 	updateInstitution,
 } from "../services/management.service.js";
@@ -29,6 +33,42 @@ export async function updateInstitutionController(req, res) {
 
 export async function listBatchesController(req, res) {
 	return res.status(200).json({ data: await listBatches(req.user, req.query) });
+}
+
+export async function getBatchDetailController(req, res) {
+	return res.status(200).json({
+		data: await getBatchDetail(req.user, req.params.id),
+	});
+}
+
+export async function removeTrainerController(req, res) {
+	return res.status(200).json({
+		data: await removeTrainerFromBatch(
+			req.user,
+			req.params.id,
+			req.params.trainerId,
+		),
+	});
+}
+
+export async function removeStudentController(req, res) {
+	return res.status(200).json({
+		data: await removeStudentFromBatch(
+			req.user,
+			req.params.id,
+			req.params.studentId,
+		),
+	});
+}
+
+export async function listInstitutionMembersController(req, res) {
+	return res.status(200).json({
+		data: await listInstitutionMembers(
+			req.user,
+			req.params.id,
+			req.query.role,
+		),
+	});
 }
 
 export async function createBatchController(req, res) {

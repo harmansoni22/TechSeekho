@@ -2,6 +2,7 @@ import {
 	createAssignment,
 	getAssignment,
 	listAssignments,
+	listSubmissionsForReview,
 	reviewSubmission,
 	submitAssignment,
 } from "../services/assignments.service.js";
@@ -33,4 +34,9 @@ export async function reviewSubmissionController(req, res) {
 		req.body,
 	);
 	return res.status(200).json({ data: submission });
+}
+
+export async function listSubmissionsController(req, res) {
+	const submissions = await listSubmissionsForReview(req.user, req.query);
+	return res.status(200).json({ data: submissions });
 }

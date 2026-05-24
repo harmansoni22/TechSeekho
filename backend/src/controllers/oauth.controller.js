@@ -7,6 +7,19 @@ function normalizeEmail(email) {
 	return typeof email === "string" ? email.trim().toLowerCase() : null;
 }
 
+// Cap outbound provider calls so a slow Google/GitHub does not hold a thread.
+const PROVIDER_FETCH_TIMEOUT_MS = 5_000;
+
+async function fetchWithTimeout(url, options = {}) {
+	const controller = new AbortController();
+	const timer = setTimeout(() => controller.abort(), PROVIDER_FETCH_TIMEOUT_MS);
+	try {
+		return await fetch(url, { ...options, signal: controller.signal });
+	} finally {
+		clearTimeout(timer);
+	}
+}
+
 async function verifyProviderToken(provider, { idToken, accessToken, providerAccountId, email }) {
 	const p = String(provider || "").toLowerCase();
 
@@ -17,7 +30,7 @@ async function verifyProviderToken(provider, { idToken, accessToken, providerAcc
 		if (p === "google") {
 			if (idToken) {
 				const tokenInfoUrl = `https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(idToken)}`;
-				const r = await fetch(tokenInfoUrl);
+				const r = await fetchWithTimeout(tokenInfoUrl);
 				if (!r.ok) return false;
 				const info = await r.json();
 				const sub = String(info.sub || "");
@@ -29,7 +42,7 @@ async function verifyProviderToken(provider, { idToken, accessToken, providerAcc
 			}
 
 			if (accessToken) {
-				const r = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
+				const r = await fetchWithTimeout("https://www.googleapis.com/oauth2/v3/userinfo", {
 					headers: { Authorization: `Bearer ${accessToken}` },
 				});
 				if (!r.ok) return false;
@@ -49,7 +62,7 @@ async function verifyProviderToken(provider, { idToken, accessToken, providerAcc
 			// GitHub provides accessToken (no id_token). Verify via /user and /user/emails
 			if (!accessToken) return false;
 
-			const r = await fetch("https://api.github.com/user", {
+			const r = await fetchWithTimeout("https://api.github.com/user", {
 				headers: {
 					Authorization: `Bearer ${accessToken}`,
 					"User-Agent": "techseekho-app",
@@ -63,7 +76,7 @@ async function verifyProviderToken(provider, { idToken, accessToken, providerAcc
 				// try to verify email if available
 				let primaryEmail = info.email || null;
 				if (!primaryEmail) {
-					const r2 = await fetch("https://api.github.com/user/emails", {
+					const r2 = await fetchWithTimeout("https://api.github.com/user/emails", {
 						headers: {
 							Authorization: `Bearer ${accessToken}`,
 							"User-Agent": "techseekho-app",
@@ -139,42 +152,39 @@ export async function oauthLogin(req, res) {
 		throw new AppError("fullName is required", 400, "OAUTH_NAME_REQUIRED");
 	}
 
-	// Look up existing user by email.
-	const existing = await findUserByEmail(normalizedEmail);
-
-	let user;
-	if (existing) {
-		user = await prisma.user.update({
-			where: { id: existing.id },
-
-			data: {
-				fullName,
-				avatarUrl: avatarUrl || existing.avatarUrl,
-				isEmailVerified: true,
-				// Keep existing roles/status.
-			},
-			select: {
-				id: true,
-				fullName: true,
-				email: true,
-				phone: true,
-				status: true,
-				isEmailVerified: true,
-				isPhoneVerified: true,
-				createdAt: true,
-				roleAssignments: {
-					select: { role: { select: { name: true } } },
-				},
-			},
+	// All DB mutations for OAuth provisioning commit together. Either we
+	// produce a usable user (with role + student profile) or nothing.
+	const user = await prisma.$transaction(async (tx) => {
+		const existing = await tx.user.findUnique({
+			where: { email: normalizedEmail },
 		});
-	} else {
-		// Create a new user with a dummy passwordHash.
-		// Security note: we store an unusable password hash; credentials login
-		// will still work only if user registers properly via /auth/register.
-		// STUDENT role is used by default (matches createUser())
-		// We need a Prisma client here; since we removed local PrismaClient,
-		// use the shared users.service.js Prisma instance is not exposed.
-		const studentRole = await prisma.role.findUnique({
+
+		if (existing) {
+			return tx.user.update({
+				where: { id: existing.id },
+				data: {
+					fullName,
+					avatarUrl: avatarUrl || existing.avatarUrl,
+					isEmailVerified: true,
+					// Keep existing roles/status.
+				},
+				select: {
+					id: true,
+					fullName: true,
+					email: true,
+					phone: true,
+					status: true,
+					isEmailVerified: true,
+					isPhoneVerified: true,
+					createdAt: true,
+					roleAssignments: {
+						select: { role: { select: { name: true } } },
+					},
+				},
+			});
+		}
+
+		const studentRole = await tx.role.findUnique({
 			where: { name: "STUDENT" },
 			select: { id: true },
 		});
@@ -183,11 +193,12 @@ export async function oauthLogin(req, res) {
 			throw new AppError("STUDENT role not found", 500, "OAUTH_ROLE_MISSING");
 		}
 
-		// Store a value that will never authenticate via credentials.
-		// (bcrypt expects a specific hash format; using a non-bcrypt string fails comparisons.)
+		// Sentinel non-bcrypt string — bcrypt.compare will always return false,
+		// so OAuth-only users cannot log in via credentials until they set a
+		// real password through a future password-reset flow.
 		const dummyPasswordHash = "!oauth-disabled";
 
-		const created = await prisma.user.create({
+		return tx.user.create({
 			data: {
 				fullName,
 				email: normalizedEmail,
@@ -213,8 +224,7 @@ export async function oauthLogin(req, res) {
 				},
 			},
 		});
-		user = created;
-	}
+	});
 
 	const roles = user.roleAssignments.map((ra) => ra.role.name);
 
