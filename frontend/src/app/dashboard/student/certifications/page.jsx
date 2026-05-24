@@ -1,7 +1,7 @@
 "use client";
 
 import Card from "@/app/components/ui/Card";
-import TopBar from "../components/layout/TopBar/TopBar";
+import TopBar from "@/features/dashboard/components/ui/layout/TopBar/TopBar";
 
 const CertificationsPage = () => {
   const certificationPaths = [
