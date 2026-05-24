@@ -1,5 +1,5 @@
 import Card from "@/app/components/ui/Card";
-import TopBar from "@/app/dashboard/components/layout/TopBar/TopBar";
+import TopBar from "@/features/dashboard/components/ui/layout/TopBar/TopBar";
 
 export const metadata = {
     title: "Refund Policy | Techseekho Dashboard",
