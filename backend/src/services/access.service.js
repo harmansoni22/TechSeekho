@@ -9,6 +9,10 @@ export function isAdmin(user) {
 	return user.roles.includes("ADMIN");
 }
 
+export function isCoordinator(user) {
+	return user.roles.includes("INSTITUTION_COORDINATOR");
+}
+
 export function isPrivileged(user) {
 	return isSuperAdmin(user);
 }
@@ -93,9 +97,9 @@ export async function assertCanAccessBatch(
 		return true;
 	}
 
-	// Institution-scoped admin
+	// Institution-scoped admin or coordinator
 	if (
-		isAdmin(user) &&
+		(isAdmin(user) || isCoordinator(user)) &&
 		userHasInstitutionAccess(
 			user,
 			batch.institutionId
@@ -159,9 +163,9 @@ export async function assertCanManageBatch(
 		return true;
 	}
 
-	// Institution-scoped admin
+	// Institution-scoped admin or coordinator
 	if (
-		isAdmin(user) &&
+		(isAdmin(user) || isCoordinator(user)) &&
 		userHasInstitutionAccess(
 			user,
 			batch.institutionId

@@ -20,6 +20,37 @@ const CONTACT_TYPES = {
 	PHONE: "PHONE",
 };
 
+const MIN_PASSWORD_LENGTH = 8;
+const MAX_PASSWORD_LENGTH = 128;
+
+function assertPasswordStrength(password) {
+	if (typeof password !== "string") {
+		throw new AppError("Password is required", 400);
+	}
+	if (password.length < MIN_PASSWORD_LENGTH) {
+		throw new AppError(
+			`Password must be at least ${MIN_PASSWORD_LENGTH} characters`,
+			400,
+		);
+	}
+	if (password.length > MAX_PASSWORD_LENGTH) {
+		throw new AppError(
+			`Password must be at most ${MAX_PASSWORD_LENGTH} characters`,
+			400,
+		);
+	}
+	// Require some mix of character classes — keep simple to avoid frustrating
+	// users while still rejecting obvious weak passwords.
+	const hasLetter = /[A-Za-z]/.test(password);
+	const hasNumberOrSymbol = /[\d\W_]/.test(password);
+	if (!hasLetter || !hasNumberOrSymbol) {
+		throw new AppError(
+			"Password must contain letters and at least one number or symbol",
+			400,
+		);
+	}
+}
+
 function getContact({ email, phone, identifier }) {
 	const raw = identifier ?? null;
 	const emailValue = normalizeEmail(email || (raw?.includes("@") ? raw : null));
@@ -74,8 +105,15 @@ async function createOtp({
 	};
 }
 
-async function consumeOtp({ contactType, contactValue, purpose, otp }) {
-	const verification = await prisma.contactVerification.findFirst({
+async function consumeOtp({ contactType, contactValue, purpose, otp }, tx) {
+	// `tx` is an optional Prisma transaction client. Callers that wrap the
+	// surrounding auth flow in $transaction MUST pass it through so the
+	// OTP consumption commits atomically with whatever the caller does
+	// afterwards (e.g. user.update on login). If `tx` is omitted we operate
+	// on the global client — kept for backward compatibility.
+	const client = tx ?? prisma;
+
+	const verification = await client.contactVerification.findFirst({
 		where: {
 			contactType,
 			contactValue,
@@ -90,7 +128,7 @@ async function consumeOtp({ contactType, contactValue, purpose, otp }) {
 	}
 
 	if (verification.expiresAt < new Date()) {
-		await prisma.contactVerification.update({
+		await client.contactVerification.update({
 			where: { id: verification.id },
 			data: { consumedAt: new Date() },
 		});
@@ -98,7 +136,7 @@ async function consumeOtp({ contactType, contactValue, purpose, otp }) {
 	}
 
 	if (verification.attempts >= verification.maxAttempts) {
-		await prisma.contactVerification.update({
+		await client.contactVerification.update({
 			where: { id: verification.id },
 			data: { consumedAt: new Date() },
 		});
@@ -108,23 +146,24 @@ async function consumeOtp({ contactType, contactValue, purpose, otp }) {
 	const isMatch = verification.otpHash === hashOtp(otp);
 
 	if (!isMatch) {
-		await prisma.contactVerification.update({
+		await client.contactVerification.update({
 			where: { id: verification.id },
 			data: { attempts: { increment: 1 } },
 		});
 		throw new AppError("Invalid OTP", 401);
 	}
 
-	await prisma.contactVerification.update({
+	await client.contactVerification.update({
 		where: { id: verification.id },
 		data: { consumedAt: new Date() },
 	});
 }
 
 export async function requestSignupOtp({ fullName, email, phone, password }) {
-	if (!fullName || !password) {
-		throw new AppError("Full name and password are required", 400);
+	if (!fullName || typeof fullName !== "string" || !fullName.trim()) {
+		throw new AppError("Full name is required", 400);
 	}
+	assertPasswordStrength(password);
 
 	const contact = getContact({ email, phone });
 
@@ -149,18 +188,35 @@ export async function verifySignupOtp({
 	otp,
 }) {
 	if (!otp) throw new AppError("OTP is required", 400);
+	if (!fullName || typeof fullName !== "string" || !fullName.trim()) {
+		throw new AppError("Full name is required", 400);
+	}
+	assertPasswordStrength(password);
 
 	const contact = getContact({ email, phone });
-	await consumeOtp({ ...contact, purpose: "SIGNUP", otp });
 
-	const user = await createUser({
-		fullName,
-		email:
-			contact.contactType === CONTACT_TYPES.EMAIL ? contact.contactValue : null,
-		phone:
-			contact.contactType === CONTACT_TYPES.PHONE ? contact.contactValue : null,
-		password,
-		verifiedContactType: contact.contactType,
+	// OTP consumption and user creation must be atomic — otherwise an OTP
+	// can be burned while user creation fails (uniqueness conflict, role
+	// missing, etc.) leaving the user unable to retry.
+	const user = await prisma.$transaction(async (tx) => {
+		await consumeOtp({ ...contact, purpose: "SIGNUP", otp }, tx);
+
+		return createUser(
+			{
+				fullName,
+				email:
+					contact.contactType === CONTACT_TYPES.EMAIL
+						? contact.contactValue
+						: null,
+				phone:
+					contact.contactType === CONTACT_TYPES.PHONE
+						? contact.contactValue
+						: null,
+				password,
+				verifiedContactType: contact.contactType,
+			},
+			tx,
+		);
 	});
 
 	const token = generateToken({
@@ -225,30 +281,34 @@ export async function verifyLoginOtp({
 		throw new AppError("Invalid credentials", 401);
 	}
 
-	await consumeOtp({ ...contact, purpose: "LOGIN", otp });
+	// Transactional boundary: OTP consumption + user update must commit
+	// together. Previously, if the user update failed after consumeOtp,
+	// the OTP was burned and the user could not retry without requesting
+	// a new one.
+	const updatedUser = await prisma.$transaction(async (tx) => {
+		await consumeOtp({ ...contact, purpose: "LOGIN", otp }, tx);
 
-	const updatedUser = await prisma.user.update({
-		where: { id: user.id },
-		data: {
-			lastLoginAt: new Date(),
-			...(contact.contactType === CONTACT_TYPES.EMAIL
-				? { isEmailVerified: true }
-				: { isPhoneVerified: true }),
-		},
-		select: {
-			id: true,
-			fullName: true,
-			email: true,
-			phone: true,
-			status: true,
-			isEmailVerified: true,
-			isPhoneVerified: true,
-			roleAssignments: {
-				select: {
-					role: { select: { name: true } },
+		return tx.user.update({
+			where: { id: user.id },
+			data: {
+				lastLoginAt: new Date(),
+				...(contact.contactType === CONTACT_TYPES.EMAIL
+					? { isEmailVerified: true }
+					: { isPhoneVerified: true }),
+			},
+			select: {
+				id: true,
+				fullName: true,
+				email: true,
+				phone: true,
+				status: true,
+				isEmailVerified: true,
+				isPhoneVerified: true,
+				roleAssignments: {
+					select: { role: { select: { name: true } } },
 				},
 			},
-		},
+		});
 	});
 
 	const roles = updatedUser.roleAssignments.map(

@@ -7,6 +7,7 @@ import {
 	assertCanManageBatch,
 	isPrivileged,
 } from "./access.service.js";
+import { audit } from "./audit.service.js";
 
 function isSuperAdmin(user) {
 	return user.roles.includes(
@@ -210,41 +211,212 @@ export async function createInstitution(
 	});
 }
 
-export async function updateInstitution(
-	user,
-	id,
-	payload
-) {
-	await assertInstitutionAccess(
-		user,
-		id
-	);
+export async function updateInstitution(user, id, payload) {
+	await assertInstitutionAccess(user, id);
 
-	return prisma.institution.update({
+	const before = await prisma.institution.findUnique({
 		where: { id },
-
-		data: {
-			name: payload.name,
-
-			type: payload.type,
-
-			city: payload.city,
-
-			state: payload.state,
-
-			address:
-				payload.address,
-
-			contactEmail:
-				payload.contactEmail,
-
-			contactPhone:
-				payload.contactPhone,
-
-			isActive:
-				payload.isActive,
+		select: {
+			name: true,
+			type: true,
+			city: true,
+			state: true,
+			isActive: true,
+			contactEmail: true,
+			contactPhone: true,
 		},
 	});
+
+	if (!before) {
+		throw new AppError("Institution not found", 404);
+	}
+
+	const updated = await prisma.institution.update({
+		where: { id },
+		data: {
+			name: payload.name,
+			type: payload.type,
+			city: payload.city,
+			state: payload.state,
+			address: payload.address,
+			contactEmail: payload.contactEmail,
+			contactPhone: payload.contactPhone,
+			isActive: payload.isActive,
+		},
+	});
+
+	// Diff only fields that changed; never store the full payload.
+	const changes = {};
+	for (const key of Object.keys(payload)) {
+		if (before[key] !== undefined && before[key] !== updated[key]) {
+			changes[key] = { before: before[key], after: updated[key] };
+		}
+	}
+
+	audit({
+		actor: user,
+		action:
+			before.isActive !== updated.isActive
+				? updated.isActive
+					? "institution.activate"
+					: "institution.deactivate"
+				: "institution.update",
+		entityType: "Institution",
+		entityId: id,
+		institutionId: id,
+		metadata: { changes },
+	});
+
+	return updated;
+}
+
+export async function getBatchDetail(user, batchId) {
+	// Authorization: anyone who can access the batch can view its roster.
+	// Mutations (assign/remove) re-validate separately.
+	await assertCanAccessBatch(user, batchId);
+
+	const batch = await prisma.batch.findUnique({
+		where: { id: batchId },
+		include: {
+			course: { select: { id: true, slug: true, title: true } },
+			institution: { select: { id: true, name: true } },
+			trainers: {
+				include: {
+					trainer: {
+						include: {
+							user: {
+								select: { id: true, fullName: true, email: true, phone: true },
+							},
+						},
+					},
+				},
+			},
+			students: {
+				include: {
+					user: {
+						select: { id: true, fullName: true, email: true, phone: true },
+					},
+				},
+				orderBy: { joinedAt: "desc" },
+			},
+		},
+	});
+
+	if (!batch) {
+		throw new AppError("Batch not found", 404);
+	}
+
+	return batch;
+}
+
+export async function removeTrainerFromBatch(user, batchId, trainerId) {
+	requireInstitutionManager(user);
+
+	const batch = await getBatchOrThrow(batchId);
+	await assertInstitutionAccess(user, batch.institutionId);
+
+	const result = await prisma.batchTrainer.deleteMany({
+		where: { batchId, trainerId },
+	});
+
+	if (result.count === 0) {
+		throw new AppError("Trainer is not assigned to this batch", 404);
+	}
+
+	audit({
+		actor: user,
+		action: "batch.remove_trainer",
+		entityType: "BatchTrainer",
+		entityId: null,
+		institutionId: batch.institutionId,
+		metadata: { batchId, trainerId },
+	});
+
+	return { removed: true };
+}
+
+export async function removeStudentFromBatch(user, batchId, studentId) {
+	requireInstitutionManager(user);
+
+	const batch = await getBatchOrThrow(batchId);
+	await assertInstitutionAccess(user, batch.institutionId);
+
+	const student = await prisma.studentProfile.findUnique({
+		where: { id: studentId },
+		select: { id: true, currentBatchId: true },
+	});
+
+	if (!student) {
+		throw new AppError("Student not found", 404);
+	}
+	if (student.currentBatchId !== batchId) {
+		throw new AppError("Student is not assigned to this batch", 404);
+	}
+
+	return prisma.studentProfile.update({
+		where: { id: studentId },
+		data: { currentBatchId: null },
+		select: { id: true, currentBatchId: true },
+	});
+}
+
+export async function listInstitutionMembers(user, institutionId, role) {
+	// Used by trainer/student pickers when assigning to a batch. We must
+	// scope to institutions the caller can access — never reveal members
+	// of an institution the caller is not part of.
+	await assertInstitutionAccess(user, institutionId);
+
+	const normalizedRole = String(role || "").toUpperCase();
+	if (!["TRAINER", "STUDENT"].includes(normalizedRole)) {
+		throw new AppError("role must be TRAINER or STUDENT", 400);
+	}
+
+	const users = await prisma.user.findMany({
+		where: {
+			status: "ACTIVE",
+			roleAssignments: {
+				some: {
+					institutionId,
+					role: { name: normalizedRole },
+				},
+			},
+		},
+		select: {
+			id: true,
+			fullName: true,
+			email: true,
+			phone: true,
+			trainerProfile:
+				normalizedRole === "TRAINER"
+					? { select: { id: true, specialization: true } }
+					: false,
+			studentProfile:
+				normalizedRole === "STUDENT"
+					? {
+						select: {
+							id: true,
+							enrollmentNumber: true,
+							currentBatchId: true,
+						},
+					}
+					: false,
+		},
+		orderBy: { fullName: "asc" },
+	});
+
+	return users.map((u) => ({
+		userId: u.id,
+		fullName: u.fullName,
+		email: u.email,
+		phone: u.phone,
+		profileId:
+			normalizedRole === "TRAINER"
+				? u.trainerProfile?.id ?? null
+				: u.studentProfile?.id ?? null,
+		specialization: u.trainerProfile?.specialization ?? null,
+		enrollmentNumber: u.studentProfile?.enrollmentNumber ?? null,
+		currentBatchId: u.studentProfile?.currentBatchId ?? null,
+	}));
 }
 
 export async function listBatches(
@@ -478,35 +650,65 @@ export async function assignTrainerToBatch(
 	batchId,
 	trainerId
 ) {
-	requireInstitutionManager(
-		user
-	);
+	requireInstitutionManager(user);
 
-	const batch =
-		await getBatchOrThrow(
-			batchId
-		);
+	if (!trainerId) {
+		throw new AppError("trainerId is required", 400);
+	}
 
-	await assertInstitutionAccess(
-		user,
-		batch.institutionId
-	);
+	const batch = await getBatchOrThrow(batchId);
+	await assertInstitutionAccess(user, batch.institutionId);
 
-	return prisma.batchTrainer.upsert({
-		where: {
-			batchId_trainerId: {
-				batchId,
-				trainerId,
+	// Ensure the trainer belongs to (i.e. has a role assignment under) the
+	// same institution as the batch. Without this check an institution admin
+	// can rope a trainer from another institution into their batch.
+	const trainer = await prisma.trainerProfile.findUnique({
+		where: { id: trainerId },
+		select: {
+			id: true,
+			user: {
+				select: {
+					roleAssignments: {
+						select: { institutionId: true },
+					},
+				},
 			},
 		},
-
-		update: {},
-
-		create: {
-			batchId,
-			trainerId,
-		},
 	});
+
+	if (!trainer) {
+		throw new AppError("Trainer not found", 404);
+	}
+
+	const trainerInstitutionIds = (trainer.user?.roleAssignments || [])
+		.map((a) => a.institutionId)
+		.filter(Boolean);
+
+	if (!trainerInstitutionIds.includes(batch.institutionId)) {
+		throw new AppError(
+			"Trainer is not affiliated with this institution",
+			403
+		);
+	}
+
+	const link = await prisma.batchTrainer.upsert({
+		where: {
+			batchId_trainerId: { batchId, trainerId },
+		},
+		update: {},
+		create: { batchId, trainerId },
+	});
+
+	audit({
+		actor: user,
+		action: "batch.assign_trainer",
+		entityType: "BatchTrainer",
+		entityId: link.id,
+		institutionId: batch.institutionId,
+		metadata: { batchId, trainerId },
+	});
+
+	return link;
 }
 
 export async function assignStudentToBatch(
@@ -514,27 +716,61 @@ export async function assignStudentToBatch(
 	batchId,
 	studentId
 ) {
-	requireInstitutionManager(
-		user
+	requireInstitutionManager(user);
+
+	if (!studentId) {
+		throw new AppError("studentId is required", 400);
+	}
+
+	const batch = await getBatchOrThrow(batchId);
+	await assertInstitutionAccess(user, batch.institutionId);
+
+	// Ensure the student belongs to the same institution as the batch.
+	// Otherwise an institution admin could steal students from another
+	// institution by silently moving them into one of their own batches.
+	const student = await prisma.studentProfile.findUnique({
+		where: { id: studentId },
+		select: {
+			id: true,
+			currentBatch: { select: { institutionId: true } },
+			user: {
+				select: {
+					roleAssignments: {
+						select: { institutionId: true },
+					},
+				},
+			},
+		},
+	});
+
+	if (!student) {
+		throw new AppError("Student not found", 404);
+	}
+
+	const studentInstitutionIds = new Set(
+		[
+			student.currentBatch?.institutionId,
+			...(student.user?.roleAssignments || []).map((a) => a.institutionId),
+		].filter(Boolean)
 	);
 
-	const batch =
-		await getBatchOrThrow(
-			batchId
+	// Allow if super admin OR the student already has any link to the target
+	// institution. A student with no institution at all (fresh signup) is also
+	// allowed — onboarding flow.
+	if (
+		!isSuperAdmin(user) &&
+		studentInstitutionIds.size > 0 &&
+		!studentInstitutionIds.has(batch.institutionId)
+	) {
+		throw new AppError(
+			"Student is not affiliated with this institution",
+			403
 		);
-
-	await assertInstitutionAccess(
-		user,
-		batch.institutionId
-	);
+	}
 
 	return prisma.studentProfile.update({
 		where: { id: studentId },
-
-		data: {
-			currentBatchId:
-				batchId,
-		},
+		data: { currentBatchId: batchId },
 	});
 }
 

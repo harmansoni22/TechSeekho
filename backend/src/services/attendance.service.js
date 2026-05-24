@@ -8,6 +8,7 @@ import {
 	getStudentProfileOrThrow,
 	isPrivileged,
 } from "./access.service.js";
+import { audit } from "./audit.service.js";
 
 function startOfDay(value) {
 	const date = value
@@ -88,27 +89,27 @@ export async function listAttendance(
 		where.studentId = student.id;
 	}
 
-	// Non-student filtered queries
+	// Non-student filtered queries. The caller MUST pass batchId so we can
+	// authorize via batch membership — querying by studentId alone would let
+	// any trainer/admin reach across institutions.
 	else if (filters.studentId) {
-		const student =
-			await getStudentOrThrow(
-				filters.studentId
-			);
-
-		// Prevent cross-batch visibility
-		if (
-			filters.batchId &&
-			student.currentBatchId !==
-				filters.batchId
-		) {
+		if (!filters.batchId) {
 			throw new AppError(
-				"Student does not belong to this batch",
-				403
+				"batchId is required when querying by studentId",
+				400,
 			);
 		}
 
-		where.studentId =
-			filters.studentId;
+		const student = await getStudentOrThrow(filters.studentId);
+
+		if (student.currentBatchId !== filters.batchId) {
+			throw new AppError(
+				"Student does not belong to this batch",
+				403,
+			);
+		}
+
+		where.studentId = filters.studentId;
 	}
 
 	return prisma.attendance.findMany({
@@ -191,33 +192,43 @@ export async function markAttendance(
 		);
 	}
 
-	return prisma.attendance.upsert({
+	const day = startOfDay(date);
+	const existing = await prisma.attendance.findUnique({
 		where: {
-			batchId_studentId_date: {
-				batchId,
-
-				studentId,
-
-				date: startOfDay(date),
-			},
+			batchId_studentId_date: { batchId, studentId, date: day },
 		},
+		select: { id: true, status: true },
+	});
 
-		update: {
-			status,
-
-			markedAt: new Date(),
+	const record = await prisma.attendance.upsert({
+		where: {
+			batchId_studentId_date: { batchId, studentId, date: day },
 		},
+		update: { status, markedAt: new Date() },
+		create: { batchId, studentId, date: day, status },
+	});
 
-		create: {
+	const batchInfo = await prisma.batch.findUnique({
+		where: { id: batchId },
+		select: { institutionId: true },
+	});
+
+	audit({
+		actor: user,
+		action: existing ? "attendance.update" : "attendance.mark",
+		entityType: "Attendance",
+		entityId: record.id,
+		institutionId: batchInfo?.institutionId ?? null,
+		metadata: {
 			batchId,
-
 			studentId,
-
-			date: startOfDay(date),
-
-			status,
+			date: day.toISOString(),
+			previousStatus: existing?.status ?? null,
+			nextStatus: status,
 		},
 	});
+
+	return record;
 }
 
 export async function bulkMarkAttendance(
@@ -282,42 +293,49 @@ export async function bulkMarkAttendance(
 		);
 	}
 
-	return prisma.$transaction(
+	const result = await prisma.$transaction(
 		records.map((record) =>
 			prisma.attendance.upsert({
 				where: {
-					batchId_studentId_date:
-						{
-							batchId,
-
-							studentId:
-								record.studentId,
-
-							date:
-								attendanceDate,
-						},
+					batchId_studentId_date: {
+						batchId,
+						studentId: record.studentId,
+						date: attendanceDate,
+					},
 				},
-
-				update: {
-					status: record.status,
-
-					markedAt:
-						new Date(),
-				},
-
+				update: { status: record.status, markedAt: new Date() },
 				create: {
 					batchId,
-
-					studentId:
-						record.studentId,
-
-					date:
-						attendanceDate,
-
-					status:
-						record.status,
+					studentId: record.studentId,
+					date: attendanceDate,
+					status: record.status,
 				},
-			})
-		)
+			}),
+		),
 	);
+
+	const batchInfo = await prisma.batch.findUnique({
+		where: { id: batchId },
+		select: { institutionId: true },
+	});
+
+	audit({
+		actor: user,
+		action: "attendance.bulk_mark",
+		entityType: "Attendance",
+		entityId: null,
+		institutionId: batchInfo?.institutionId ?? null,
+		metadata: {
+			batchId,
+			date: attendanceDate.toISOString(),
+			recordCount: records.length,
+			// Summary only — never store the full records array.
+			byStatus: records.reduce((acc, r) => {
+				acc[r.status] = (acc[r.status] || 0) + 1;
+				return acc;
+			}, {}),
+		},
+	});
+
+	return result;
 }

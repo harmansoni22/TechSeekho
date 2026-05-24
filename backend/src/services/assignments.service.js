@@ -1,5 +1,6 @@
 import prisma from "../config/db.js";
 import { AppError } from "../utils/appError.js";
+import { validateFileUrl } from "../utils/fileUrl.js";
 
 import {
 	assertCanAccessBatch,
@@ -8,6 +9,7 @@ import {
 	getTrainerProfileOrThrow,
 	isPrivileged,
 } from "./access.service.js";
+import { audit } from "./audit.service.js";
 
 const assignmentInclude = {
 	batch: {
@@ -323,15 +325,16 @@ export async function submitAssignment(
 		);
 	}
 
-	if (
-		!payload.submissionText &&
-		!payload.fileUrl
-	) {
+	if (!payload.submissionText && !payload.fileUrl) {
 		throw new AppError(
 			"submissionText or fileUrl is required",
-			400
+			400,
 		);
 	}
+
+	// Reject arbitrary external URLs. validateFileUrl returns null on empty
+	// input and throws on anything that isn't on the trusted-host allowlist.
+	const safeFileUrl = validateFileUrl(payload.fileUrl);
 
 	return prisma.submission.upsert({
 		where: {
@@ -340,38 +343,20 @@ export async function submitAssignment(
 				studentId: student.id,
 			},
 		},
-
 		update: {
-			submissionText:
-				payload.submissionText ||
-				null,
-
-			fileUrl:
-				payload.fileUrl || null,
-
+			submissionText: payload.submissionText || null,
+			fileUrl: safeFileUrl,
 			status: "SUBMITTED",
-
 			submittedAt: new Date(),
 		},
-
 		create: {
 			assignmentId,
-
 			studentId: student.id,
-
 			// NEVER trust payload ownership
-			institutionId:
-				assignment.institutionId,
-
-			submissionText:
-				payload.submissionText ||
-				null,
-
-			fileUrl:
-				payload.fileUrl || null,
-
+			institutionId: assignment.institutionId,
+			submissionText: payload.submissionText || null,
+			fileUrl: safeFileUrl,
 			status: "SUBMITTED",
-
 			submittedAt: new Date(),
 		},
 	});
@@ -382,41 +367,151 @@ export async function reviewSubmission(
 	submissionId,
 	payload
 ) {
-	const submission =
-		await prisma.submission.findUnique({
-			where: { id: submissionId },
+	const submission = await prisma.submission.findUnique({
+		where: { id: submissionId },
+		select: {
+			id: true,
+			status: true,
+			score: true,
+			assignmentId: true,
+			studentId: true,
+			institutionId: true,
+			assignment: { select: { batchId: true } },
+		},
+	});
 
-			include: {
-				assignment: {
-					select: {
-						batchId: true,
+	if (!submission) {
+		throw new AppError("Submission not found", 404);
+	}
+
+	await assertCanManageBatch(user, submission.assignment.batchId);
+
+	const maxScore =
+		typeof payload.maxScore === "number" && payload.maxScore > 0
+			? Math.floor(payload.maxScore)
+			: 100;
+
+	let score = null;
+	if (payload.score !== undefined && payload.score !== null && payload.score !== "") {
+		const parsed = Number(payload.score);
+		if (!Number.isFinite(parsed) || parsed < 0) {
+			throw new AppError("score must be a non-negative number", 400);
+		}
+		if (parsed > maxScore) {
+			throw new AppError(
+				`score cannot exceed maxScore (${maxScore})`,
+				400,
+			);
+		}
+		score = Math.floor(parsed);
+	}
+
+	const updated = await prisma.submission.update({
+		where: { id: submissionId },
+		data: {
+			status: "REVIEWED",
+			feedback: payload.feedback?.trim() || null,
+			score,
+			maxScore,
+			reviewedAt: new Date(),
+		},
+		include: {
+			student: {
+				include: {
+					user: {
+						select: { id: true, fullName: true, email: true },
 					},
 				},
 			},
-		});
+			assignment: {
+				select: { id: true, title: true, batchId: true },
+			},
+		},
+	});
 
-	if (!submission) {
-		throw new AppError(
-			"Submission not found",
-			404
-		);
+	audit({
+		actor: user,
+		action:
+			submission.status === "REVIEWED"
+				? "submission.re_review"
+				: "submission.review",
+		entityType: "Submission",
+		entityId: submissionId,
+		institutionId: submission.institutionId ?? null,
+		metadata: {
+			assignmentId: submission.assignmentId,
+			studentId: submission.studentId,
+			previousStatus: submission.status,
+			previousScore: submission.score ?? null,
+			nextScore: score,
+			maxScore,
+		},
+	});
+
+	return updated;
+}
+
+export async function listSubmissionsForReview(user, filters = {}) {
+	// Only trainers/admins/coordinators should reach this endpoint (enforced
+	// by the route). Scope the result to batches the caller can manage.
+	const where = {};
+
+	if (filters.assignmentId) {
+		const assignment = await prisma.assignment.findUnique({
+			where: { id: filters.assignmentId },
+			select: { batchId: true },
+		});
+		if (!assignment) {
+			throw new AppError("Assignment not found", 404);
+		}
+		await assertCanManageBatch(user, assignment.batchId);
+		where.assignmentId = filters.assignmentId;
+	} else if (filters.batchId) {
+		await assertCanManageBatch(user, filters.batchId);
+		where.assignment = { batchId: filters.batchId };
+	} else if (user.roles.includes("TRAINER") && !isPrivileged(user)) {
+		// Default: a trainer sees submissions only for their assigned batches.
+		const trainer = await getTrainerProfileOrThrow(user.id);
+		const batchLinks = await prisma.batchTrainer.findMany({
+			where: { trainerId: trainer.id },
+			select: { batchId: true },
+		});
+		where.assignment = {
+			batchId: { in: batchLinks.map((b) => b.batchId) },
+		};
+	} else if (!isPrivileged(user)) {
+		// ADMIN / COORDINATOR — scope to their institutions.
+		const institutionIds = (user.roleAssignments || [])
+			.map((a) => a.institutionId)
+			.filter(Boolean);
+		if (institutionIds.length === 0) return [];
+		where.institutionId = { in: institutionIds };
 	}
 
-	await assertCanManageBatch(
-		user,
-		submission.assignment.batchId
-	);
+	if (filters.status) {
+		where.status = filters.status;
+	}
 
-	return prisma.submission.update({
-		where: { id: submissionId },
-
-		data: {
-			status: "REVIEWED",
-
-			feedback:
-				payload.feedback || null,
-
-			reviewedAt: new Date(),
+	return prisma.submission.findMany({
+		where,
+		include: {
+			assignment: {
+				select: {
+					id: true,
+					title: true,
+					dueDate: true,
+					batch: { select: { id: true, name: true } },
+				},
+			},
+			student: {
+				include: {
+					user: {
+						select: { id: true, fullName: true, email: true },
+					},
+				},
+			},
 		},
+		orderBy: [{ submittedAt: "desc" }, { createdAt: "desc" }],
+		take: filters.limit ? Math.min(Number(filters.limit), 200) : 200,
 	});
 }

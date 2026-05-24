@@ -135,26 +135,29 @@ export async function findUserById(id) {
 	};
 }
 
-export async function createUser({
-	fullName,
-	email,
-	phone,
-	password,
-	verifiedContactType,
-}) {
-	const existingEmailUser = email ? await findUserByEmail(email) : null;
+export async function createUser(
+	{ fullName, email, phone, password, verifiedContactType },
+	tx,
+) {
+	const client = tx ?? prisma;
+
+	const existingEmailUser = email
+		? await client.user.findUnique({ where: { email } })
+		: null;
 	if (existingEmailUser) {
 		throw new AppError("User with this email already exists", 409);
 	}
 
-	const existingPhoneUser = phone ? await findUserByPhone(phone) : null;
+	const existingPhoneUser = phone
+		? await client.user.findUnique({ where: { phone } })
+		: null;
 	if (existingPhoneUser) {
 		throw new AppError("User with this phone number already exists", 409);
 	}
 
 	const passwordHash = await hashPassword(password);
 
-	const studentRole = await prisma.role.findUnique({
+	const studentRole = await client.role.findUnique({
 		where: { name: "STUDENT" },
 	});
 
@@ -162,7 +165,7 @@ export async function createUser({
 		throw new AppError("STUDENT role not found", 500);
 	}
 
-	const user = await prisma.user.create({
+	const user = await client.user.create({
 		data: {
 			fullName,
 			email,
