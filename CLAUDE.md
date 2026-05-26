@@ -247,8 +247,7 @@ Required at all times: `DATABASE_URL`.
 
 | Var                           | Used by                                              |
 |-------------------------------|------------------------------------------------------|
-| `NEXT_PUBLIC_BACKEND`         | `src/lib/api.js` (client) and `src/auth.js` (server) |
-| `BACKEND_URL`                 | `src/app/api/auth/internal/auth/sync/route.js`       |
+| `NEXT_PUBLIC_BACKEND`         | `src/lib/api.js` (client), `src/auth.js` (server), all Next.js API proxy routes |
 | `NEXTAUTH_SECRET`             | `src/auth.js` — required                             |
 | `NEXTAUTH_URL`                | NextAuth (production canonical URL)                  |
 | `GITHUB_CLIENT_ID`            | GitHub provider                                      |
@@ -256,7 +255,7 @@ Required at all times: `DATABASE_URL`.
 | `GOOGLE_CLIENT_ID`            | Google provider                                      |
 | `GOOGLE_SECRET`               | Google provider                                      |
 
-Note: there are two env vars pointing at the backend (`NEXT_PUBLIC_BACKEND` and `BACKEND_URL`). They were introduced at different times; both should hold the same value in practice. Pick one when refactoring.
+The frontend uses a single env var for the backend: `NEXT_PUBLIC_BACKEND`. Earlier drift to `BACKEND_URL` and `NEXT_PUBLIC_API_URL` has been removed; if you see those in a PR, reject them.
 
 ---
 
@@ -291,14 +290,10 @@ If you fix one, cross it off here.
 
 | # | What                                                                | Severity | Notes                                                                                  |
 |---|---------------------------------------------------------------------|----------|----------------------------------------------------------------------------------------|
-| 1 | `backend/src/models/user.model.js` uses lowercase `type: string`    | low      | Throws if Mongoose ever requires it; the file is currently unused                       |
-| 2 | `backend/src/data/users.data.js` references undefined `id`           | low      | Crashes on import; file is currently unused                                            |
-| 3 | `Course.price` units are ambiguous (paisa? INR?)                    | medium   | AI prompt says INR, schema is `Int @default(0)`; pick one and migrate                  |
-| 4 | No automated backend tests                                          | medium   | `npm -w backend test` exits 1                                                          |
-| 5 | AI chat has no session memory                                       | by design| Each request is independent; landing-page popup resets on close                        |
-| 6 | Frontend env split: `NEXT_PUBLIC_BACKEND` vs `BACKEND_URL`          | low      | Both reference the same backend; consolidate                                           |
-| 7 | `backend/.env.example` checked in with a real-looking `HF_TOKEN`    | high     | Rotate the token and replace with `hf_…` placeholder before pushing publicly           |
-| 8 | `/api/auth/internal/auth/sync/route.js` hits `/api/auth/oauth/sync` | bug?     | The backend exposes `/oauth/login`, not `/api/auth/oauth/sync`. Path likely stale. Verify before relying on cookie-set flow. |
+| 1 | `Course.price` units are ambiguous (paisa? INR?)                    | medium   | AI prompt says INR, schema is `Int @default(0)`; pick one and migrate                  |
+| 2 | No automated backend tests                                          | medium   | `npm -w backend test` exits 1                                                          |
+| 3 | AI chat has no session memory                                       | by design| Each request is independent; landing-page popup resets on close                        |
+| 4 | `backend/.env.example` template hygiene                             | low      | `.gitignore` now allows the template via `!.env.example`, but the local copy still contains a real-looking HF_TOKEN — rotate before committing publicly. |
 
 These are **observations**, not committed work. Don't claim any of them are fixed without verifying the actual change.
 

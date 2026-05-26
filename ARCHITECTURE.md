@@ -17,6 +17,7 @@ Contents:
 12. [Error handling](#12-error-handling)
 13. [Security posture](#13-security-posture)
 14. [Operational notes](#14-operational-notes)
+15. [Per-role subdomain deployment (forward plan)](#15-per-role-subdomain-deployment-forward-plan)
 
 ---
 
@@ -350,16 +351,24 @@ authenticate(req):
 ### 7.3 Access decision tree (`access.service.js`)
 
 ```
-assertCanAccessBatch(user, batchId):
+assertCanAccessBatch(user, batchId):                                  (READ)
   batch = load(batchId)
   if SUPER_ADMIN                                                  → ALLOW
-  if ADMIN AND roleAssignment for batch.institutionId             → ALLOW
+  if (ADMIN or COORDINATOR) AND roleAssignment for batch.institutionId → ALLOW
   if TRAINER AND BatchTrainer(batchId, trainerProfile)            → ALLOW
   if STUDENT AND studentProfile.currentBatchId === batchId        → ALLOW
   otherwise                                                       → 403
 
-assertCanManageBatch(user, batchId):
-  same as above, MINUS the student branch.
+assertCanManageBatch(user, batchId):                                  (WRITE)
+  batch = load(batchId)
+  if SUPER_ADMIN                                                  → ALLOW
+  if ADMIN AND roleAssignment for batch.institutionId             → ALLOW
+  if TRAINER AND BatchTrainer(batchId, trainerProfile)            → ALLOW
+  otherwise                                                       → 403
+
+Note: COORDINATOR is projection-only — it appears in the READ tree but NOT
+in the WRITE tree. The same separation lives in management.service.js as
+`requireInstitutionManager` (read) vs `requireInstitutionAdmin` (write).
 ```
 
 ### 7.4 Frontend dashboard gating
@@ -383,22 +392,24 @@ Quick reference. Source of truth is the per-feature route file.
 | AI                 | `POST /ai/chat`                                | STUDENT, TRAINER, ADMIN, SUPER_ADMIN                |
 | Users              | `GET /users`                                   | ADMIN, SUPER_ADMIN (auto institution-scoped)        |
 | Admin              | `GET /admin/platform/overview`                 | SUPER_ADMIN                                         |
-| Institutions       | `GET /institutions`                            | ADMIN, SUPER_ADMIN                                  |
+| Institutions       | `GET /institutions`                            | ADMIN, COORDINATOR (own), SUPER_ADMIN               |
 |                    | `POST /institutions`                           | SUPER_ADMIN (service-enforced)                      |
 |                    | `PATCH /institutions/:id`                      | ADMIN, SUPER_ADMIN                                  |
-| Batches            | `GET /batches`                                 | STUDENT, TRAINER, ADMIN, SUPER_ADMIN                |
+| Batches            | `GET /batches`, `/batches/:id`                 | STUDENT, TRAINER, COORDINATOR, ADMIN, SUPER_ADMIN   |
 |                    | `POST /batches`                                | ADMIN, SUPER_ADMIN                                  |
 |                    | `PATCH /batches/:id`                           | TRAINER, ADMIN, SUPER_ADMIN                         |
 |                    | `POST /batches/:id/{trainers,students}`        | ADMIN, SUPER_ADMIN                                  |
-| Announcements      | `GET /announcements`                           | STUDENT, TRAINER, ADMIN, SUPER_ADMIN                |
+|                    | `DELETE /batches/:id/{trainers,students}/...`  | ADMIN, SUPER_ADMIN                                  |
+| Institution members| `GET /institutions/:id/members`                | COORDINATOR, ADMIN, SUPER_ADMIN                     |
+| Announcements      | `GET /announcements`                           | STUDENT, TRAINER, COORDINATOR, ADMIN, SUPER_ADMIN   |
 |                    | `POST /announcements`                          | TRAINER, ADMIN, SUPER_ADMIN                         |
 | Assignments        | `GET /assignments`, `/:id`                     | STUDENT, TRAINER, COORDINATOR, ADMIN, SUPER_ADMIN   |
-|                    | `POST /assignments`                            | TRAINER, COORDINATOR, ADMIN, SUPER_ADMIN            |
+|                    | `POST /assignments`                            | TRAINER, ADMIN, SUPER_ADMIN                         |
 |                    | `POST /assignments/:id/submit`                 | STUDENT                                             |
 |                    | `GET /assignments/submissions`                 | TRAINER, COORDINATOR, ADMIN, SUPER_ADMIN            |
-|                    | `PATCH /assignments/submissions/:id/review`    | TRAINER, COORDINATOR, ADMIN, SUPER_ADMIN            |
+|                    | `PATCH /assignments/submissions/:id/review`    | TRAINER, ADMIN, SUPER_ADMIN                         |
 | Assessments        | same shape as assignments                      | same                                                |
-| Attendance         | `GET /attendance`                              | STUDENT (self-scoped), TRAINER, ADMIN, SUPER_ADMIN  |
+| Attendance         | `GET /attendance`                              | STUDENT (self-scoped), TRAINER, COORDINATOR, ADMIN, SUPER_ADMIN |
 |                    | `POST /attendance`, `/attendance/bulk`         | TRAINER, ADMIN, SUPER_ADMIN                         |
 | Modules            | `GET /modules`                                 | STUDENT, TRAINER, ADMIN, SUPER_ADMIN                |
 |                    | `POST /modules`, `/:pathId/modules`            | TRAINER, ADMIN, SUPER_ADMIN                         |
@@ -641,3 +652,70 @@ What's not in place:
 - **Migrations**: `prisma migrate dev` (local) or `prisma migrate deploy` (CI/CD). Six migrations through 2026-05-19 including `submission_grading` and `audit_log`.
 - **Seed idempotency**: `prisma/seed.js` upserts on natural keys (role name, institution name, course slug, user email). Re-running is safe and resets student `currentBatchId`.
 - **Turbopack**: rooted at the monorepo root by `frontend/next.config.mjs` to silence lockfile auto-detection warnings. `npm -w frontend run dev` currently sets `NEXT_DISABLE_TURBOPACK=1` and `NODE_OPTIONS=--max_old_space_size=3072` — if a future dev wonders why Turbopack is off, that's why.
+
+---
+
+## 15. Per-role subdomain deployment (forward plan)
+
+The dashboard route tree is already role-isolated (`/dashboard/{role}/...`),
+the permissions map (`dashboardRoutePermissions.js`) locks each route to a
+single role, and the backend enforces RBAC server-side on every endpoint.
+Moving from one shared host to per-role subdomains is therefore a deploy and
+config change, not a code rewrite.
+
+### 15.1 Target topology
+
+```
+techseekho.com               public marketing + course catalog + signup
+app.techseekho.com           /login + entry router (shared auth gateway)
+student.techseekho.com       only /dashboard/student/* renders
+trainer.techseekho.com       only /dashboard/trainer/* renders
+coordinator.techseekho.com   only /dashboard/coordinator/* renders
+admin.techseekho.com         only /dashboard/admin/* renders
+super.techseekho.com         only /dashboard/super-admin/* renders
+api.techseekho.com           backend (unchanged)
+```
+
+The same Next.js codebase deploys to each subdomain with different env vars.
+There is no codebase fork.
+
+### 15.2 Env contract
+
+Set on every frontend deploy:
+
+| Var | Value (example) |
+|---|---|
+| `NEXTAUTH_URL` | `https://student.techseekho.com` (per subdomain) |
+| `NEXTAUTH_COOKIE_DOMAIN` | `.techseekho.com` (parent-scoped so all subdomains share the session) |
+| `NEXT_PUBLIC_BACKEND` | `https://api.techseekho.com` |
+| `DASHBOARD_SUBDOMAIN_HOSTS` | `{"student":"/dashboard/student","trainer":"/dashboard/trainer","coordinator":"/dashboard/coordinator","admin":"/dashboard/admin","super":"/dashboard/super-admin"}` |
+| `DASHBOARD_SUBDOMAIN_MODE` | `log` for the first roll-out, then `enforce` |
+
+Set on the backend deploy:
+
+| Var | Value (example) |
+|---|---|
+| `CORS_ORIGINS` | `https://app.techseekho.com,https://student.techseekho.com,https://trainer.techseekho.com,https://coordinator.techseekho.com,https://admin.techseekho.com,https://super.techseekho.com` |
+| `TRUST_PROXY` | `true` (the rate limiter needs accurate `x-forwarded-for`) |
+
+### 15.3 Code surfaces that already support this
+
+- **`frontend/src/auth.js`** — When `NEXTAUTH_COOKIE_DOMAIN` is set, NextAuth's session cookie is scoped to the parent domain. Unset ⇒ host-only cookie (current behavior unchanged).
+- **`frontend/src/middleware.js`** — Inspects the request hostname. In `log` mode it warns about routing decisions without enforcing; in `enforce` mode it rewrites `/` → the role's dashboard home and 404s cross-role paths. If `DASHBOARD_SUBDOMAIN_HOSTS` is unset, the middleware is a no-op.
+- **`frontend/next.config.mjs`** — `Content-Security-Policy` derives its `connect-src` from `NEXT_PUBLIC_BACKEND.origin`, so it remains correct when the backend URL changes per environment.
+- **`frontend/src/app/dashboard/dashboardRoutePermissions.js`** — Every route is already locked to one role. No drift to fix.
+- **`backend/src/config/cors.js`** — Reads `CORS_ORIGINS` as a comma list. Adding more origins requires no code changes.
+
+### 15.4 Roll-out order (each step is independently revertable)
+
+1. Set `CORS_ORIGINS` on the backend to include all planned subdomains.
+2. Deploy the existing frontend to each subdomain with `DASHBOARD_SUBDOMAIN_MODE=log` so the middleware logs proposed rewrites but does nothing. Watch logs for a week.
+3. Set `NEXTAUTH_COOKIE_DOMAIN=.techseekho.com` on every frontend deploy. Note: this **invalidates existing sessions** because the cookie name and scope change; users re-authenticate once.
+4. Flip `DASHBOARD_SUBDOMAIN_MODE=enforce`. From here on, hitting `student.techseekho.com/dashboard/admin/...` returns 404 from middleware before any rendering happens. (Defense in depth: the backend gate would also reject.)
+5. Update DNS to point each subdomain at the right deploy.
+
+### 15.5 Things this design does NOT do
+
+- It does **not** introduce per-role backends, per-role databases, or per-role auth services. There is one backend and one Postgres.
+- It does **not** require splitting the frontend codebase. Same `src/`, different env vars.
+- It does **not** give each role a different visual design system. Per-role accent colors and taglines already exist in `features/dashboard/theme/roleThemes.js`; the shell, components, and typography are intentionally shared so internal QA, accessibility, and brand work scale linearly.
