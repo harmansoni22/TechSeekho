@@ -1,6 +1,6 @@
 import CustomScroll from "../components/CustomScrollBar";
 import AboutShowcase from "./AboutShowcase";
-
+// update
 export const metadata = {
     title: "About | Techseekho",
     description:
