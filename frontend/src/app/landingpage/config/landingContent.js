@@ -106,16 +106,17 @@ export const CALL_TO_ACTION_CONTENT = {
 
 export async function COURSES_FOR_LANDING_PAGE() {
     try {
-        if (!api("/courses")) console.error("Unable to fetch http://localhost:4000/courses");
+        if (!api("/courses"))
+            console.error("Unable to fetch http://localhost:4000/courses");
         const courses = await api("/courses");
         if (!courses) console.error("No courses found");
-        const COURSE = []
+        const COURSE = [];
 
         courses.map((course) => {
             COURSE.push(course);
         });
 
-        console.log("Courses found. API working here.")
+        console.log("Courses found. API working here.");
 
         return COURSE;
 

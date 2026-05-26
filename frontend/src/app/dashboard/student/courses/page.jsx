@@ -159,7 +159,7 @@ const StudentCourses = () => {
 
                             {/* Progress Bar */}
                             <div className="mt-4">
-                                <div className="w-full bg-gray-200 rounded-full h-3">
+                                <div className="w-full progress-track rounded-full h-3">
                                     <div
                                         className="h-3 rounded-full transition-all duration-300"
                                         style={{
@@ -233,7 +233,7 @@ const StudentCourses = () => {
                                                     </div>
                                                 </div>
                                                 <div className="flex items-center space-x-2">
-                                                    <div className="w-16 bg-gray-200 rounded-full h-2">
+                                                    <div className="w-16 progress-track rounded-full h-2">
                                                         <div
                                                             className="h-2 rounded-full"
                                                             style={{
@@ -262,10 +262,10 @@ const StudentCourses = () => {
                                                 type="button"
                                                 onClick={() =>
                                                     router.push(
-                                                        `/dashboard/student/learning/${course.id}`,
+                                                        `/dashboard/student/learning/${course.pathId}`,
                                                     )
                                                 }
-                                                className="text-sm font-medium hover:underline"
+                                                className="cursor-pointer text-sm font-medium hover:underline focus:outline-none focus:ring-2"
                                                 style={{
                                                     color: "var(--dashboard-primary)",
                                                 }}
@@ -284,21 +284,26 @@ const StudentCourses = () => {
                                     type="button"
                                     onClick={() =>
                                         router.push(
-                                            `/dashboard/student/learning/${course.id}`,
+                                            `/dashboard/student/learning/${course.pathId}`,
                                         )
                                     }
-                                    className="px-4 py-2 rounded-lg font-medium transition-colors"
+                                    className="cursor-pointer px-4 py-2 rounded-lg font-medium transition-colors hover:opacity-95 focus:outline-none focus:ring-2"
                                     style={{
                                         backgroundColor:
                                             "var(--dashboard-primary)",
-                                        color: "white",
+                                        color: "var(--dashboard-primary-fg)",
                                     }}
                                 >
                                     Continue Learning
                                 </button>
                                 <button
                                     type="button"
-                                    className="px-4 py-2 rounded-lg font-medium border transition-colors"
+                                    onClick={() =>
+                                        router.push(
+                                            `/dashboard/student/learning/${course.pathId}`,
+                                        )
+                                    }
+                                    className="cursor-pointer px-4 py-2 rounded-lg font-medium border transition-colors hover:opacity-95 focus:outline-none focus:ring-2"
                                     style={{
                                         borderColor: "var(--dashboard-border)",
                                         color: "var(--dashboard-fg)",
@@ -330,11 +335,13 @@ const StudentCourses = () => {
                     </p>
                     <button
                         type="button"
-                        onClick={() => router.push("/courses")}
-                        className="px-6 py-3 rounded-lg font-medium transition-colors"
+                        onClick={() =>
+                            router.push("/dashboard/student/learning")
+                        }
+                        className="cursor-pointer px-6 py-3 rounded-lg font-medium transition-colors hover:opacity-95 focus:outline-none focus:ring-2"
                         style={{
                             backgroundColor: "var(--dashboard-primary)",
-                            color: "white",
+                            color: "var(--dashboard-primary-fg)",
                         }}
                     >
                         Browse Courses

@@ -6,10 +6,8 @@ const router = Router();
 
 router.use(authenticate);
 
-router.get(
-	"/platform/overview",
-	requireRole("SUPER_ADMIN"),
-	(req, res, next) => getPlatformOverviewController(req, res).catch(next),
+router.get("/platform/overview", requireRole("SUPER_ADMIN"), (req, res, next) =>
+	getPlatformOverviewController(req, res).catch(next),
 );
 
 export default router;

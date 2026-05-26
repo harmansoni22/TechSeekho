@@ -7,7 +7,11 @@ import {
 	getDashboard,
 	updateProgress,
 } from "../controllers/student.controller.js";
-import { authenticate, requireOperationalAccess, requireRole } from "../middlewares/auth.js";
+import {
+	authenticate,
+	requireOperationalAccess,
+	requireRole,
+} from "../middlewares/auth.js";
 
 const router = Router();
 
@@ -15,7 +19,6 @@ const router = Router();
 router.use(authenticate);
 router.use(requireOperationalAccess);
 router.use(requireRole("STUDENT"));
-
 
 router.get("/dashboard", (req, res, next) =>
 	getDashboard(req, res).catch(next),

@@ -18,6 +18,11 @@
         var(--font-body), system-ui, -apple-system, "Segoe UI", sans-serif;
 }
 
+:root {
+    --dashboard-sidebar-expanded: 16rem;
+    --dashboard-sidebar-collapsed: 4.75rem;
+}
+
 /* Subtle paper grain — applied as a background-image on hero panels */
 .grain-overlay {
     position: relative;
@@ -80,6 +85,18 @@
         opacity: 1;
         animation: none;
     }
+}
+
+/* Theme-aware progress-bar track. Use as the background container for any
+ * progress bar so all pages share one source of truth and react to the
+ * dashboard theme tokens. The filled portion remains an inline style on the
+ * child so each caller can pick its accent. */
+.progress-track {
+    background-color: color-mix(
+        in srgb,
+        var(--dashboard-surface) 80%,
+        var(--dashboard-muted) 20%
+    );
 }
 
 /* Hairline divider used between sections */

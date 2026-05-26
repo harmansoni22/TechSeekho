@@ -54,27 +54,18 @@ async function getBatchOrThrow(batchId) {
 	});
 
 	if (!batch) {
-		throw new AppError(
-			"Batch not found",
-			404
-		);
+		throw new AppError("Batch not found", 404);
 	}
 
 	return batch;
 }
 
-export async function listAssignments(
-	user,
-	filters = {}
-) {
+export async function listAssignments(user, filters = {}) {
 	const where = {};
 
 	// Explicit batch access validation
 	if (filters.batchId) {
-		await assertCanAccessBatch(
-			user,
-			filters.batchId
-		);
+		await assertCanAccessBatch(user, filters.batchId);
 
 		where.batchId = filters.batchId;
 	}
@@ -84,48 +75,32 @@ export async function listAssignments(
 	}
 
 	// Student scope
-	if (
-		user.roles.includes("STUDENT") &&
-		!isPrivileged(user)
-	) {
-		const student =
-			await getStudentProfileOrThrow(
-				user.id
-			);
+	if (user.roles.includes("STUDENT") && !isPrivileged(user)) {
+		const student = await getStudentProfileOrThrow(user.id);
 
 		if (!student.currentBatchId) {
 			return [];
 		}
 
-		where.batchId =
-			student.currentBatchId;
+		where.batchId = student.currentBatchId;
 	}
 
 	// Trainer scope
-	if (
-		user.roles.includes("TRAINER") &&
-		!isPrivileged(user)
-	) {
-		const trainer =
-			await getTrainerProfileOrThrow(
-				user.id
-			);
+	if (user.roles.includes("TRAINER") && !isPrivileged(user)) {
+		const trainer = await getTrainerProfileOrThrow(user.id);
 
-		const batchLinks =
-			await prisma.batchTrainer.findMany({
-				where: {
-					trainerId: trainer.id,
-				},
+		const batchLinks = await prisma.batchTrainer.findMany({
+			where: {
+				trainerId: trainer.id,
+			},
 
-				select: {
-					batchId: true,
-				},
-			});
+			select: {
+				batchId: true,
+			},
+		});
 
 		where.batchId = {
-			in: batchLinks.map(
-				(link) => link.batchId
-			),
+			in: batchLinks.map((link) => link.batchId),
 		};
 	}
 
@@ -134,202 +109,128 @@ export async function listAssignments(
 
 		include: assignmentInclude,
 
-		orderBy: [
-			{ dueDate: "asc" },
-			{ createdAt: "desc" },
-		],
+		orderBy: [{ dueDate: "asc" }, { createdAt: "desc" }],
 	});
 }
 
-export async function getAssignment(
-	user,
-	id
-) {
-	const assignment =
-		await prisma.assignment.findUnique({
-			where: { id },
+export async function getAssignment(user, id) {
+	const assignment = await prisma.assignment.findUnique({
+		where: { id },
 
-			include: {
-				...assignmentInclude,
+		include: {
+			...assignmentInclude,
 
-				submissions: {
-					include: {
-						student: {
-							include: {
-								user: {
-									select: {
-										id: true,
-										fullName: true,
-										email: true,
-									},
+			submissions: {
+				include: {
+					student: {
+						include: {
+							user: {
+								select: {
+									id: true,
+									fullName: true,
+									email: true,
 								},
 							},
 						},
 					},
 				},
 			},
-		});
+		},
+	});
 
 	if (!assignment) {
-		throw new AppError(
-			"Assignment not found",
-			404
-		);
+		throw new AppError("Assignment not found", 404);
 	}
 
-	await assertCanAccessBatch(
-		user,
-		assignment.batchId
-	);
+	await assertCanAccessBatch(user, assignment.batchId);
 
 	// Students can only see their own submissions
-	if (
-		user.roles.includes("STUDENT") &&
-		!isPrivileged(user)
-	) {
-		const student =
-			await getStudentProfileOrThrow(
-				user.id
-			);
+	if (user.roles.includes("STUDENT") && !isPrivileged(user)) {
+		const student = await getStudentProfileOrThrow(user.id);
 
 		return {
 			...assignment,
 
-			submissions:
-				assignment.submissions.filter(
-					(submission) =>
-						submission.studentId ===
-						student.id
-				),
+			submissions: assignment.submissions.filter(
+				(submission) => submission.studentId === student.id,
+			),
 		};
 	}
 
 	return assignment;
 }
 
-export async function createAssignment(
-	user,
-	payload
-) {
-	const {
-		title,
-		description,
-		batchId,
-		courseId,
-		dueDate,
-	} = payload;
+export async function createAssignment(user, payload) {
+	const { title, description, batchId, courseId, dueDate } = payload;
 
-	if (
-		!title ||
-		!batchId ||
-		!courseId
-	) {
-		throw new AppError(
-			"Title, batchId, and courseId are required",
-			400
-		);
+	if (!title || !batchId || !courseId) {
+		throw new AppError("Title, batchId, and courseId are required", 400);
 	}
 
-	await assertCanManageBatch(
-		user,
-		batchId
-	);
+	await assertCanManageBatch(user, batchId);
 
 	// NEVER trust institutionId from client
-	const batch =
-		await getBatchOrThrow(batchId);
+	const batch = await getBatchOrThrow(batchId);
 
-	const trainer =
-		user.roles.includes("TRAINER")
-			? await getTrainerProfileOrThrow(
-					user.id
-			  )
-			: payload.createdById
-				? await prisma.trainerProfile.findUnique(
-						{
-							where: {
-								id: payload.createdById,
-							},
-						}
-				  )
-				: null;
+	const trainer = user.roles.includes("TRAINER")
+		? await getTrainerProfileOrThrow(user.id)
+		: payload.createdById
+			? await prisma.trainerProfile.findUnique({
+					where: {
+						id: payload.createdById,
+					},
+				})
+			: null;
 
 	if (!trainer) {
-		throw new AppError(
-			"A valid trainer profile is required",
-			400
-		);
+		throw new AppError("A valid trainer profile is required", 400);
 	}
 
 	return prisma.assignment.create({
 		data: {
 			title,
 
-			description:
-				description || null,
+			description: description || null,
 
 			batchId,
 
 			courseId,
 
 			// Server-derived ownership
-			institutionId:
-				batch.institutionId,
+			institutionId: batch.institutionId,
 
 			createdById: trainer.id,
 
-			dueDate: dueDate
-				? new Date(dueDate)
-				: null,
+			dueDate: dueDate ? new Date(dueDate) : null,
 		},
 
 		include: assignmentInclude,
 	});
 }
 
-export async function submitAssignment(
-	user,
-	assignmentId,
-	payload
-) {
-	const assignment =
-		await prisma.assignment.findUnique({
-			where: { id: assignmentId },
+export async function submitAssignment(user, assignmentId, payload) {
+	const assignment = await prisma.assignment.findUnique({
+		where: { id: assignmentId },
 
-			select: {
-				id: true,
-				batchId: true,
-				institutionId: true,
-			},
-		});
+		select: {
+			id: true,
+			batchId: true,
+			institutionId: true,
+		},
+	});
 
 	if (!assignment) {
-		throw new AppError(
-			"Assignment not found",
-			404
-		);
+		throw new AppError("Assignment not found", 404);
 	}
 
-	const student =
-		await getStudentProfileOrThrow(
-			user.id
-		);
+	const student = await getStudentProfileOrThrow(user.id);
 
-	if (
-		student.currentBatchId !==
-		assignment.batchId
-	) {
-		throw new AppError(
-			"Assignment is not available for this student",
-			403
-		);
+	if (student.currentBatchId !== assignment.batchId) {
+		throw new AppError("Assignment is not available for this student", 403);
 	}
 
 	if (!payload.submissionText && !payload.fileUrl) {
-		throw new AppError(
-			"submissionText or fileUrl is required",
-			400,
-		);
+		throw new AppError("submissionText or fileUrl is required", 400);
 	}
 
 	// Reject arbitrary external URLs. validateFileUrl returns null on empty
@@ -362,11 +263,7 @@ export async function submitAssignment(
 	});
 }
 
-export async function reviewSubmission(
-	user,
-	submissionId,
-	payload
-) {
+export async function reviewSubmission(user, submissionId, payload) {
 	const submission = await prisma.submission.findUnique({
 		where: { id: submissionId },
 		select: {
@@ -392,16 +289,17 @@ export async function reviewSubmission(
 			: 100;
 
 	let score = null;
-	if (payload.score !== undefined && payload.score !== null && payload.score !== "") {
+	if (
+		payload.score !== undefined &&
+		payload.score !== null &&
+		payload.score !== ""
+	) {
 		const parsed = Number(payload.score);
 		if (!Number.isFinite(parsed) || parsed < 0) {
 			throw new AppError("score must be a non-negative number", 400);
 		}
 		if (parsed > maxScore) {
-			throw new AppError(
-				`score cannot exceed maxScore (${maxScore})`,
-				400,
-			);
+			throw new AppError(`score cannot exceed maxScore (${maxScore})`, 400);
 		}
 		score = Math.floor(parsed);
 	}

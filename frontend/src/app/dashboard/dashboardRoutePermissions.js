@@ -86,7 +86,7 @@ const dashboardRoutePermissions = {
     "/dashboard/student/courses": ["STUDENT"],
     "/dashboard/student/learning": ["STUDENT"],
     "/dashboard/student/skill-labs": ["STUDENT"],
-    "/dashboard/student/homework": ["STUDENT"],
+    "/dashboard/student/assignments": ["STUDENT"],
     "/dashboard/student/certifications": ["STUDENT"],
     "/dashboard/student/ai-companion": ["STUDENT"],
     "/dashboard/student/leaderboard": ["STUDENT"],

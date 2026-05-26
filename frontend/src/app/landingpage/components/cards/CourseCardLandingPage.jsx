@@ -98,9 +98,11 @@ export function CourseCard() {
         });
 
         if (!courses) {
-            console.error("Courses not getting fetched in Course card component.");
+            console.error(
+                "Courses not getting fetched in Course card component.",
+            );
         } else {
-            console.log("Course are here also available.")
+            console.log("Course are here also available.");
         }
 
         upcomingCourses.sort((a, b) => getStartTime(a) - getStartTime(b));
@@ -255,9 +257,13 @@ export function CourseCard() {
         >
             {visibleCourses.map((course, idx) => {
                 if (!visibleCourses || !course) {
-                    return console.log("Course not getting rendered in course card component.")
+                    return console.log(
+                        "Course not getting rendered in course card component.",
+                    );
                 } else {
-                    console.log("Course are here also available at rendering course cards.")
+                    console.log(
+                        "Course are here also available at rendering course cards.",
+                    );
                 }
                 const isOngoing =
                     String(course.status || "").toLowerCase() === "ongoing";

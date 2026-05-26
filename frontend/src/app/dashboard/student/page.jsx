@@ -7,6 +7,7 @@ import ErrorScreen from "@/app/components/error/ErrorScreen";
 import Card from "@/app/components/ui/Card";
 import LoadingSpinner from "@/app/components/ui/LoadingSpinner";
 import TopBar from "@/features/dashboard/components/ui/layout/TopBar/TopBar";
+import Panel from "@/features/dashboard/components/ui/widgets/Panel.jsx";
 
 const StudentDashboard = () => {
     const { data: session, status } = useSession();
@@ -91,6 +92,11 @@ const StudentDashboard = () => {
         quickAccessLessons,
         topCourses,
         recentActivity,
+        trainers = [],
+        announcements = [],
+        todayAssignments = [],
+        upcomingAssessments = [],
+        attendanceSummary,
     } = dashboardData;
 
     return (
@@ -162,7 +168,13 @@ const StudentDashboard = () => {
                                     {goal.label}
                                 </span>
                                 <div className="flex items-center space-x-2">
-                                    <div className="w-20 bg-gray-200 rounded-full h-2">
+                                    <div
+                                        className="w-20 rounded-full h-2"
+                                        style={{
+                                            backgroundColor:
+                                                "color-mix(in srgb, var(--dashboard-surface) 80%, var(--dashboard-muted) 20%)",
+                                        }}
+                                    >
                                         <div
                                             className="h-2 rounded-full"
                                             style={{
@@ -208,7 +220,9 @@ const StudentDashboard = () => {
                             className="text-sm mt-2"
                             style={{ color: "var(--dashboard-muted)" }}
                         >
-                            Keep it up! Your longest streak is 14 days.
+                            {dashboardData.longestStreak
+                                ? `Longest streak so far: ${dashboardData.longestStreak} days.`
+                                : "Keep showing up — your longest streak will track here."}
                         </p>
                         <div className="mt-4 flex justify-center gap-2">
                             {Array.from({ length: 7 }, (_, i) => {
@@ -268,7 +282,7 @@ const StudentDashboard = () => {
                             }}
                             onClick={() =>
                                 router.push(
-                                    `/dashboard/student/learning/${lesson.courseId}/${lesson.id}`,
+                                    `/dashboard/student/learning/${lesson.courseId}/modules/${lesson.id}`,
                                 )
                             }
                         >
@@ -284,7 +298,13 @@ const StudentDashboard = () => {
                             >
                                 {lesson.course} • {lesson.progress}% complete
                             </p>
-                            <div className="mt-2 w-full bg-gray-200 rounded-full h-2">
+                            <div
+                                className="mt-2 w-full rounded-full h-2"
+                                style={{
+                                    backgroundColor:
+                                        "color-mix(in srgb, var(--dashboard-surface) 80%, var(--dashboard-muted) 20%)",
+                                }}
+                            >
                                 <div
                                     className="h-2 rounded-full"
                                     style={{
@@ -375,8 +395,282 @@ const StudentDashboard = () => {
                     </ul>
                 </Card>
             </section>
+
+            {/* What's next: today's assignments + upcoming assessments */}
+            <section className="grid gap-4 lg:grid-cols-2">
+                <Panel
+                    eyebrow="Today"
+                    title="Due today"
+                    description="Trainer-issued assignments with today's deadline"
+                >
+                    {todayAssignments.length === 0 ? (
+                        <p
+                            className="text-sm"
+                            style={{ color: "var(--dashboard-muted)" }}
+                        >
+                            Nothing due today.
+                        </p>
+                    ) : (
+                        <ul className="space-y-2">
+                            {todayAssignments.map((a) => (
+                                <li
+                                    key={a.id}
+                                    className="rounded-lg border p-3"
+                                    style={{
+                                        borderColor: "var(--dashboard-border)",
+                                        backgroundColor:
+                                            "var(--dashboard-surface)",
+                                    }}
+                                >
+                                    <p
+                                        className="text-sm font-semibold"
+                                        style={{
+                                            color: "var(--dashboard-fg)",
+                                        }}
+                                    >
+                                        {a.title}
+                                    </p>
+                                    <p
+                                        className="mt-1 text-xs"
+                                        style={{
+                                            color: "var(--dashboard-muted)",
+                                        }}
+                                    >
+                                        {a.courseTitle}
+                                    </p>
+                                </li>
+                            ))}
+                        </ul>
+                    )}
+                </Panel>
+
+                <Panel
+                    eyebrow="Coming up"
+                    title="Upcoming assessments"
+                    description="Scheduled in the next 30 days"
+                >
+                    {upcomingAssessments.length === 0 ? (
+                        <p
+                            className="text-sm"
+                            style={{ color: "var(--dashboard-muted)" }}
+                        >
+                            No assessments scheduled.
+                        </p>
+                    ) : (
+                        <ul className="space-y-2">
+                            {upcomingAssessments.map((a) => {
+                                const when = a.startsAt
+                                    ? new Date(a.startsAt)
+                                    : a.dueDate
+                                      ? new Date(a.dueDate)
+                                      : null;
+                                return (
+                                    <li
+                                        key={a.id}
+                                        className="rounded-lg border p-3"
+                                        style={{
+                                            borderColor:
+                                                "var(--dashboard-border)",
+                                            backgroundColor:
+                                                "var(--dashboard-surface)",
+                                        }}
+                                    >
+                                        <div className="flex items-baseline justify-between gap-3">
+                                            <p
+                                                className="text-sm font-semibold"
+                                                style={{
+                                                    color: "var(--dashboard-fg)",
+                                                }}
+                                            >
+                                                {a.title}
+                                            </p>
+                                            <span
+                                                className="text-[10px] uppercase tracking-wide"
+                                                style={{
+                                                    color: "var(--dashboard-muted)",
+                                                }}
+                                            >
+                                                {a.type}
+                                            </span>
+                                        </div>
+                                        <p
+                                            className="mt-1 text-xs"
+                                            style={{
+                                                color: "var(--dashboard-muted)",
+                                            }}
+                                        >
+                                            {a.courseTitle}
+                                            {when
+                                                ? ` • ${when.toLocaleDateString()}`
+                                                : ""}
+                                        </p>
+                                    </li>
+                                );
+                            })}
+                        </ul>
+                    )}
+                </Panel>
+            </section>
+
+            {/* Announcements + Trainers */}
+            <section className="grid gap-4 lg:grid-cols-2">
+                <Panel
+                    eyebrow="From your batch"
+                    title="Announcements"
+                    description="Latest posts from your trainer and coordinator"
+                >
+                    {announcements.length === 0 ? (
+                        <p
+                            className="text-sm"
+                            style={{ color: "var(--dashboard-muted)" }}
+                        >
+                            No announcements yet.
+                        </p>
+                    ) : (
+                        <ul className="space-y-3">
+                            {announcements.map((a) => (
+                                <li
+                                    key={a.id}
+                                    className="rounded-lg border p-3"
+                                    style={{
+                                        borderColor: "var(--dashboard-border)",
+                                        backgroundColor:
+                                            "var(--dashboard-surface)",
+                                    }}
+                                >
+                                    <p
+                                        className="text-sm font-semibold"
+                                        style={{
+                                            color: "var(--dashboard-fg)",
+                                        }}
+                                    >
+                                        {a.title}
+                                    </p>
+                                    <p
+                                        className="mt-1 text-xs"
+                                        style={{
+                                            color: "var(--dashboard-muted)",
+                                        }}
+                                    >
+                                        {a.authorName}
+                                        {a.createdAt
+                                            ? ` • ${new Date(a.createdAt).toLocaleDateString()}`
+                                            : ""}
+                                    </p>
+                                    <p
+                                        className="mt-2 text-sm"
+                                        style={{
+                                            color: "var(--dashboard-fg)",
+                                        }}
+                                    >
+                                        {a.content}
+                                    </p>
+                                </li>
+                            ))}
+                        </ul>
+                    )}
+                </Panel>
+
+                <Panel
+                    eyebrow="Trainers"
+                    title="Assigned to your batch"
+                    description="The people running your sessions"
+                >
+                    {trainers.length === 0 ? (
+                        <p
+                            className="text-sm"
+                            style={{ color: "var(--dashboard-muted)" }}
+                        >
+                            No trainer assigned yet.
+                        </p>
+                    ) : (
+                        <ul className="space-y-3">
+                            {trainers.map((t) => (
+                                <li
+                                    key={t.id}
+                                    className="rounded-lg border p-3"
+                                    style={{
+                                        borderColor: "var(--dashboard-border)",
+                                        backgroundColor:
+                                            "var(--dashboard-surface)",
+                                    }}
+                                >
+                                    <p
+                                        className="text-sm font-semibold"
+                                        style={{
+                                            color: "var(--dashboard-fg)",
+                                        }}
+                                    >
+                                        {t.fullName}
+                                    </p>
+                                    {t.specialization && (
+                                        <p
+                                            className="mt-1 text-xs"
+                                            style={{
+                                                color: "var(--dashboard-muted)",
+                                            }}
+                                        >
+                                            {t.specialization}
+                                            {t.experienceYears
+                                                ? ` • ${t.experienceYears} yrs`
+                                                : ""}
+                                        </p>
+                                    )}
+                                </li>
+                            ))}
+                        </ul>
+                    )}
+                </Panel>
+            </section>
+
+            {/* Attendance summary */}
+            {attendanceSummary && attendanceSummary.total > 0 && (
+                <Panel
+                    eyebrow="Attendance"
+                    title={`${attendanceSummary.rate}% attendance rate`}
+                    description={`Across the last ${attendanceSummary.total} sessions`}
+                >
+                    <dl className="grid gap-4 sm:grid-cols-3">
+                        <AttendanceTile
+                            label="Present"
+                            value={attendanceSummary.present}
+                            color="var(--dashboard-accent)"
+                        />
+                        <AttendanceTile
+                            label="Late"
+                            value={attendanceSummary.late}
+                            color="var(--dashboard-primary)"
+                        />
+                        <AttendanceTile
+                            label="Absent"
+                            value={attendanceSummary.absent}
+                            color="#ef4444"
+                        />
+                    </dl>
+                </Panel>
+            )}
         </div>
     );
 };
+
+const AttendanceTile = ({ label, value, color }) => (
+    <div
+        className="rounded-lg border p-4"
+        style={{
+            borderColor: "var(--dashboard-border)",
+            backgroundColor: "var(--dashboard-surface)",
+        }}
+    >
+        <dt
+            className="text-[10px] uppercase tracking-[0.24em]"
+            style={{ color: "var(--dashboard-muted)" }}
+        >
+            {label}
+        </dt>
+        <dd className="mt-1 text-2xl font-semibold" style={{ color }}>
+            {value}
+        </dd>
+    </div>
+);
 
 export default StudentDashboard;

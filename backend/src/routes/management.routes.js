@@ -51,46 +51,61 @@ router.patch(
 
 router.get(
 	"/batches",
-	requireRole("STUDENT", "TRAINER", "INSTITUTION_COORDINATOR", "ADMIN", "SUPER_ADMIN"),
+	requireRole(
+		"STUDENT",
+		"TRAINER",
+		"INSTITUTION_COORDINATOR",
+		"ADMIN",
+		"SUPER_ADMIN",
+	),
 	(req, res, next) => listBatchesController(req, res).catch(next),
 );
 router.get(
 	"/batches/:id",
-	requireRole("STUDENT", "TRAINER", "INSTITUTION_COORDINATOR", "ADMIN", "SUPER_ADMIN"),
+	requireRole(
+		"STUDENT",
+		"TRAINER",
+		"INSTITUTION_COORDINATOR",
+		"ADMIN",
+		"SUPER_ADMIN",
+	),
 	(req, res, next) => getBatchDetailController(req, res).catch(next),
 );
+// Coordinator is projection-only. Write actions on batches, trainers, and
+// students are restricted to ADMIN / SUPER_ADMIN (and TRAINER for updates to
+// their own batches, enforced by assertCanManageBatch in the service layer).
 router.post(
 	"/batches",
-	requireRole("INSTITUTION_COORDINATOR", "ADMIN", "SUPER_ADMIN"),
+	requireRole("ADMIN", "SUPER_ADMIN"),
 	validate({ body: createBatchSchema }),
 	(req, res, next) => createBatchController(req, res).catch(next),
 );
 router.patch(
 	"/batches/:id",
-	requireRole("TRAINER", "INSTITUTION_COORDINATOR", "ADMIN", "SUPER_ADMIN"),
+	requireRole("TRAINER", "ADMIN", "SUPER_ADMIN"),
 	validate({ body: updateBatchSchema }),
 	(req, res, next) => updateBatchController(req, res).catch(next),
 );
 router.post(
 	"/batches/:id/trainers",
-	requireRole("INSTITUTION_COORDINATOR", "ADMIN", "SUPER_ADMIN"),
+	requireRole("ADMIN", "SUPER_ADMIN"),
 	validate({ body: assignTrainerSchema }),
 	(req, res, next) => assignTrainerController(req, res).catch(next),
 );
 router.delete(
 	"/batches/:id/trainers/:trainerId",
-	requireRole("INSTITUTION_COORDINATOR", "ADMIN", "SUPER_ADMIN"),
+	requireRole("ADMIN", "SUPER_ADMIN"),
 	(req, res, next) => removeTrainerController(req, res).catch(next),
 );
 router.post(
 	"/batches/:id/students",
-	requireRole("INSTITUTION_COORDINATOR", "ADMIN", "SUPER_ADMIN"),
+	requireRole("ADMIN", "SUPER_ADMIN"),
 	validate({ body: assignStudentSchema }),
 	(req, res, next) => assignStudentController(req, res).catch(next),
 );
 router.delete(
 	"/batches/:id/students/:studentId",
-	requireRole("INSTITUTION_COORDINATOR", "ADMIN", "SUPER_ADMIN"),
+	requireRole("ADMIN", "SUPER_ADMIN"),
 	(req, res, next) => removeStudentController(req, res).catch(next),
 );
 router.get(
@@ -101,12 +116,19 @@ router.get(
 
 router.get(
 	"/announcements",
-	requireRole("STUDENT", "TRAINER", "ADMIN", "SUPER_ADMIN"),
+	requireRole(
+		"STUDENT",
+		"TRAINER",
+		"INSTITUTION_COORDINATOR",
+		"ADMIN",
+		"SUPER_ADMIN",
+	),
 	(req, res, next) => listAnnouncementsController(req, res).catch(next),
 );
+// Coordinator is projection-only: cannot author announcements.
 router.post(
 	"/announcements",
-	requireRole("TRAINER", "INSTITUTION_COORDINATOR", "ADMIN", "SUPER_ADMIN"),
+	requireRole("TRAINER", "ADMIN", "SUPER_ADMIN"),
 	validate({ body: createAnnouncementSchema }),
 	(req, res, next) => createAnnouncementController(req, res).catch(next),
 );

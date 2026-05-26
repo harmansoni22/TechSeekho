@@ -11,17 +11,10 @@ import {
 import { audit } from "./audit.service.js";
 
 function startOfDay(value) {
-	const date = value
-		? new Date(value)
-		: new Date();
+	const date = value ? new Date(value) : new Date();
 
-	if (
-		Number.isNaN(date.getTime())
-	) {
-		throw new AppError(
-			"Invalid date",
-			400
-		);
+	if (Number.isNaN(date.getTime())) {
+		throw new AppError("Invalid date", 400);
 	}
 
 	date.setHours(0, 0, 0, 0);
@@ -29,62 +22,41 @@ function startOfDay(value) {
 	return date;
 }
 
-async function getStudentOrThrow(
-	studentId
-) {
-	const student =
-		await prisma.studentProfile.findUnique({
-			where: { id: studentId },
+async function getStudentOrThrow(studentId) {
+	const student = await prisma.studentProfile.findUnique({
+		where: { id: studentId },
 
-			select: {
-				id: true,
-				currentBatchId: true,
-			},
-		});
+		select: {
+			id: true,
+			currentBatchId: true,
+		},
+	});
 
 	if (!student) {
-		throw new AppError(
-			"Student not found",
-			404
-		);
+		throw new AppError("Student not found", 404);
 	}
 
 	return student;
 }
 
-export async function listAttendance(
-	user,
-	filters = {}
-) {
+export async function listAttendance(user, filters = {}) {
 	const where = {};
 
 	// Explicit batch validation
 	if (filters.batchId) {
-		await assertCanAccessBatch(
-			user,
-			filters.batchId
-		);
+		await assertCanAccessBatch(user, filters.batchId);
 
-		where.batchId =
-			filters.batchId;
+		where.batchId = filters.batchId;
 	}
 
 	// Explicit date normalization
 	if (filters.date) {
-		where.date = startOfDay(
-			filters.date
-		);
+		where.date = startOfDay(filters.date);
 	}
 
 	// STUDENT scope
-	if (
-		user.roles.includes("STUDENT") &&
-		!isPrivileged(user)
-	) {
-		const student =
-			await getStudentProfileOrThrow(
-				user.id
-			);
+	if (user.roles.includes("STUDENT") && !isPrivileged(user)) {
+		const student = await getStudentProfileOrThrow(user.id);
 
 		where.studentId = student.id;
 	}
@@ -94,19 +66,13 @@ export async function listAttendance(
 	// any trainer/admin reach across institutions.
 	else if (filters.studentId) {
 		if (!filters.batchId) {
-			throw new AppError(
-				"batchId is required when querying by studentId",
-				400,
-			);
+			throw new AppError("batchId is required when querying by studentId", 400);
 		}
 
 		const student = await getStudentOrThrow(filters.studentId);
 
 		if (student.currentBatchId !== filters.batchId) {
-			throw new AppError(
-				"Student does not belong to this batch",
-				403,
-			);
+			throw new AppError("Student does not belong to this batch", 403);
 		}
 
 		where.studentId = filters.studentId;
@@ -136,60 +102,25 @@ export async function listAttendance(
 			},
 		},
 
-		orderBy: [
-			{ date: "desc" },
-			{ markedAt: "desc" },
-		],
+		orderBy: [{ date: "desc" }, { markedAt: "desc" }],
 
-		take: filters.limit
-			? Math.min(
-					Number(filters.limit),
-					100
-			  )
-			: 100,
+		take: filters.limit ? Math.min(Number(filters.limit), 100) : 100,
 	});
 }
 
-export async function markAttendance(
-	user,
-	payload
-) {
-	const {
-		batchId,
-		studentId,
-		date,
-		status,
-	} = payload;
+export async function markAttendance(user, payload) {
+	const { batchId, studentId, date, status } = payload;
 
-	if (
-		!batchId ||
-		!studentId ||
-		!status
-	) {
-		throw new AppError(
-			"batchId, studentId, and status are required",
-			400
-		);
+	if (!batchId || !studentId || !status) {
+		throw new AppError("batchId, studentId, and status are required", 400);
 	}
 
-	await assertCanManageBatch(
-		user,
-		batchId
-	);
+	await assertCanManageBatch(user, batchId);
 
-	const student =
-		await getStudentOrThrow(
-			studentId
-		);
+	const student = await getStudentOrThrow(studentId);
 
-	if (
-		student.currentBatchId !==
-		batchId
-	) {
-		throw new AppError(
-			"Student is not assigned to this batch",
-			400
-		);
+	if (student.currentBatchId !== batchId) {
+		throw new AppError("Student is not assigned to this batch", 400);
 	}
 
 	const day = startOfDay(date);
@@ -231,65 +162,41 @@ export async function markAttendance(
 	return record;
 }
 
-export async function bulkMarkAttendance(
-	user,
-	payload
-) {
-	const {
-		batchId,
-		date,
-		records,
-	} = payload;
+export async function bulkMarkAttendance(user, payload) {
+	const { batchId, date, records } = payload;
 
-	if (
-		!batchId ||
-		!Array.isArray(records) ||
-		records.length === 0
-	) {
-		throw new AppError(
-			"batchId and attendance records are required",
-			400
-		);
+	if (!batchId || !Array.isArray(records) || records.length === 0) {
+		throw new AppError("batchId and attendance records are required", 400);
 	}
 
-	await assertCanManageBatch(
-		user,
-		batchId
-	);
+	await assertCanManageBatch(user, batchId);
 
-	const attendanceDate =
-		startOfDay(date);
+	const attendanceDate = startOfDay(date);
 
 	// Validate ALL students belong to batch
-	const studentIds = records.map(
-		(record) => record.studentId
+	const studentIds = records.map((record) => record.studentId);
+
+	const students = await prisma.studentProfile.findMany({
+		where: {
+			id: {
+				in: studentIds,
+			},
+		},
+
+		select: {
+			id: true,
+			currentBatchId: true,
+		},
+	});
+
+	const invalidStudent = students.find(
+		(student) => student.currentBatchId !== batchId,
 	);
-
-	const students =
-		await prisma.studentProfile.findMany({
-			where: {
-				id: {
-					in: studentIds,
-				},
-			},
-
-			select: {
-				id: true,
-				currentBatchId: true,
-			},
-		});
-
-	const invalidStudent =
-		students.find(
-			(student) =>
-				student.currentBatchId !==
-				batchId
-		);
 
 	if (invalidStudent) {
 		throw new AppError(
 			"One or more students are not assigned to this batch",
-			400
+			400,
 		);
 	}
 

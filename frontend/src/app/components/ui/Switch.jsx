@@ -1,12 +1,12 @@
 const Switch = ({
-  defaultChecked = false,
-  disabled,
-  className = "",
-  ...props
+    defaultChecked = false,
+    disabled,
+    className = "",
+    ...props
 }) => {
-  return (
-    <label
-      className={`
+    return (
+        <label
+            className={`
                 relative
                 inline-flex
                 items-center
@@ -14,17 +14,17 @@ const Switch = ({
                 ${disabled ? "opacity-50 cursor-not-allowed" : ""}
                 ${className}
             `}
-    >
-      <input
-        type="checkbox"
-        defaultChecked={defaultChecked}
-        disabled={disabled}
-        className="peer sr-only"
-        {...props}
-      />
+        >
+            <input
+                type="checkbox"
+                defaultChecked={defaultChecked}
+                disabled={disabled}
+                className="peer sr-only"
+                {...props}
+            />
 
-      <span
-        className="
+            <span
+                className="
                     h-5
                     w-9
                     rounded-full
@@ -35,10 +35,10 @@ const Switch = ({
                     peer-focus-visible:ring-ring
                     peer-focus-visible:ring-offset-2
                 "
-      />
+            />
 
-      <span
-        className="
+            <span
+                className="
                     absolute left-0.5 top-0.5
                     h-4 w-4
                     rounded-full
@@ -46,9 +46,9 @@ const Switch = ({
                     transition-transform
                     peer-checked:translate-x-4
                 "
-      />
-    </label>
-  );
+            />
+        </label>
+    );
 };
 
 export default Switch;

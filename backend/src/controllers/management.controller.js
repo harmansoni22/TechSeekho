@@ -63,11 +63,7 @@ export async function removeStudentController(req, res) {
 
 export async function listInstitutionMembersController(req, res) {
 	return res.status(200).json({
-		data: await listInstitutionMembers(
-			req.user,
-			req.params.id,
-			req.query.role,
-		),
+		data: await listInstitutionMembers(req.user, req.params.id, req.query.role),
 	});
 }
 

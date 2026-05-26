@@ -165,7 +165,10 @@ export async function enrollInLearningPath(user, pathId) {
 	}
 
 	// Students may only enroll in global paths or paths in an institution they belong to.
-	if (path.institutionId && !userHasInstitutionAccess(user, path.institutionId)) {
+	if (
+		path.institutionId &&
+		!userHasInstitutionAccess(user, path.institutionId)
+	) {
 		throw new AppError("Learning path not available for your institution", 403);
 	}
 

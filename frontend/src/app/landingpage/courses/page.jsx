@@ -4,8 +4,8 @@ import {
     formatCourseDate,
     getCourseDurationLabel,
 } from "@/app/landingpage/lib/courseUtils";
-import { getAllCourses } from "../service/courses.service";
 import CustomScroll from "../components/CustomScrollBar";
+import { getAllCourses } from "../service/courses.service";
 
 export const metadata = {
     title: "Future Skills Programs | Techseekho",

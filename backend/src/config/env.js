@@ -14,7 +14,6 @@ if (!process.env.JWT_SECRET) {
 	dotenv.config({ path: backendEnvPath });
 }
 
-
 function parseBoolean(value, fallback = false) {
 	if (typeof value !== "string") return fallback;
 	const normalized = value.trim().toLowerCase();

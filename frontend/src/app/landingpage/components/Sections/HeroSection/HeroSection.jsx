@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import TechBackground from "../../backgrounds/ParticleConnecting";
 import { HERO_CONTENT } from "@/app/landingpage/config/landingContent";
+import TechBackground from "../../backgrounds/ParticleConnecting";
 import CustomCursor from "../../CustomCursor";
 import ElectricBorder from "../../Effects/ElectricBorder";
 import GradientText from "../../Effects/TextEffects/GradientText";

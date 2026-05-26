@@ -1,9 +1,9 @@
 const TextArea = ({ rows = 4, className = "", ...props }) => {
-  return (
-    <div className="relative">
-      <textarea
-        rows={rows}
-        className={`
+    return (
+        <div className="relative">
+            <textarea
+                rows={rows}
+                className={`
           peer
           w-full
           resize-none
@@ -28,10 +28,10 @@ const TextArea = ({ rows = 4, className = "", ...props }) => {
 
           ${className}
         `}
-        {...props}
-      />
+                {...props}
+            />
 
-      {/* <span
+            {/* <span
         aria-hidden
         className="
           pointer-events-none
@@ -47,8 +47,8 @@ const TextArea = ({ rows = 4, className = "", ...props }) => {
           peer-focus-visible:scale-100
         "
       /> */}
-    </div>
-  );
+        </div>
+    );
 };
 
 export default TextArea;

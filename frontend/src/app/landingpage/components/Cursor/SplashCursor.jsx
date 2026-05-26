@@ -2354,7 +2354,7 @@ function SplashCursor({
         let colorUpdateTimer = 0.0;
         let animationFrameId = null;
         let frameLoopStarted = false;
-        let lastInteractiveHoverTime = 0;
+        const lastInteractiveHoverTime = 0;
 
         const interactiveSelector =
             typeof INTERACTIVE_SELECTOR === "string"

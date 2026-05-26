@@ -30,7 +30,35 @@ export async function getStudentDashboardData(userId) {
 				include: {
 					course: true,
 					institution: true,
+					trainers: {
+						include: {
+							trainer: {
+								include: {
+									user: {
+										select: {
+											fullName: true,
+											email: true,
+											avatarUrl: true,
+										},
+									},
+								},
+							},
+						},
+					},
+					announcements: {
+						orderBy: { createdAt: "desc" },
+						take: 5,
+						include: {
+							author: {
+								select: { fullName: true },
+							},
+						},
+					},
 				},
+			},
+			attendanceRecords: {
+				orderBy: { date: "desc" },
+				take: 30,
 			},
 			pathEnrollments: {
 				include: {
@@ -163,6 +191,119 @@ export async function getStudentDashboardData(userId) {
 		unlockedAt: userAchievement.unlockedAt,
 	}));
 
+	// Trainer roster for the current batch (joined via BatchTrainer → TrainerProfile → User).
+	const trainers = (student.currentBatch?.trainers ?? []).map((bt) => ({
+		id: bt.trainer.id,
+		fullName: bt.trainer.user.fullName,
+		email: bt.trainer.user.email,
+		avatarUrl: bt.trainer.user.avatarUrl,
+		specialization: bt.trainer.specialization,
+		experienceYears: bt.trainer.experienceYears,
+	}));
+
+	// Announcements posted to the current batch (most recent 5).
+	const announcements = (student.currentBatch?.announcements ?? []).map(
+		(a) => ({
+			id: a.id,
+			title: a.title,
+			content: a.content,
+			authorName: a.author?.fullName ?? null,
+			createdAt: a.createdAt,
+		}),
+	);
+
+	// Attendance summary across the last 30 sessions.
+	const attendanceCounts = (student.attendanceRecords ?? []).reduce(
+		(acc, r) => {
+			if (r.status === "PRESENT") acc.present += 1;
+			else if (r.status === "LATE") acc.late += 1;
+			else if (r.status === "ABSENT") acc.absent += 1;
+			return acc;
+		},
+		{ present: 0, late: 0, absent: 0 },
+	);
+	const totalAttendance =
+		attendanceCounts.present + attendanceCounts.late + attendanceCounts.absent;
+	const attendanceSummary = {
+		...attendanceCounts,
+		total: totalAttendance,
+		rate:
+			totalAttendance > 0
+				? Math.round(
+						((attendanceCounts.present + attendanceCounts.late) * 100) /
+							totalAttendance,
+					)
+				: 0,
+	};
+
+	// Today's assignments + upcoming assessments are fetched alongside the
+	// main dashboard read so trainers issuing work see it surface immediately
+	// on the next dashboard refresh. Both are scoped to the student's batch.
+	let todayAssignments = [];
+	let upcomingAssessments = [];
+	if (student.currentBatchId) {
+		const startOfToday = new Date();
+		startOfToday.setHours(0, 0, 0, 0);
+		const endOfToday = new Date();
+		endOfToday.setHours(23, 59, 59, 999);
+		const now = new Date();
+		const oneMonthOut = new Date();
+		oneMonthOut.setDate(oneMonthOut.getDate() + 30);
+
+		const [todays, upcoming] = await Promise.all([
+			prisma.assignment.findMany({
+				where: {
+					batchId: student.currentBatchId,
+					dueDate: { gte: startOfToday, lte: endOfToday },
+				},
+				select: {
+					id: true,
+					title: true,
+					dueDate: true,
+					course: { select: { title: true } },
+				},
+				orderBy: { dueDate: "asc" },
+			}),
+			prisma.assessment.findMany({
+				where: {
+					batchId: student.currentBatchId,
+					status: "PUBLISHED",
+					OR: [
+						{ startsAt: { gte: now, lte: oneMonthOut } },
+						{ startsAt: null, dueDate: { gte: now, lte: oneMonthOut } },
+					],
+				},
+				select: {
+					id: true,
+					title: true,
+					type: true,
+					startsAt: true,
+					dueDate: true,
+					course: { select: { title: true } },
+				},
+				orderBy: [
+					{ startsAt: { sort: "asc", nulls: "last" } },
+					{ dueDate: "asc" },
+				],
+				take: 5,
+			}),
+		]);
+		todayAssignments = todays.map((a) => ({
+			id: a.id,
+			title: a.title,
+			dueDate: a.dueDate,
+			courseTitle: a.course?.title,
+		}));
+		upcomingAssessments = upcoming.map((a) => ({
+			id: a.id,
+			title: a.title,
+			type: a.type,
+			startsAt: a.startsAt,
+			dueDate: a.dueDate,
+			courseTitle: a.course?.title,
+		}));
+	}
+
 	return {
 		student: {
 			id: student.id,
@@ -212,6 +353,7 @@ export async function getStudentDashboardData(userId) {
 			},
 		],
 		currentStreak,
+		longestStreak: student.streak?.longestStreak ?? 0,
 		topCourses: coursesWithProgress.slice(0, 3).map((course) => ({
 			id: course.id,
 			name: course.title,
@@ -224,6 +366,11 @@ export async function getStudentDashboardData(userId) {
 		quickAccessLessons,
 		achievements,
 		courses: coursesWithProgress,
+		trainers,
+		announcements,
+		todayAssignments,
+		upcomingAssessments,
+		attendanceSummary,
 	};
 }
 

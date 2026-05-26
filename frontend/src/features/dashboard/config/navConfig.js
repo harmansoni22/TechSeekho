@@ -300,8 +300,8 @@ export const NAV_CONFIG = {
                 icon: ICONS.flask,
             },
             {
-                href: "/dashboard/student/homework",
-                label: "Homework",
+                href: "/dashboard/student/assignments",
+                label: "Assignments",
                 icon: ICONS.clipboard,
             },
             {

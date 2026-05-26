@@ -1,4 +1,4 @@
-import { useRef, useCallback, useEffect } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import "../../styles/BorderGlow.css";
 
 function parseHSL(hslStr) {
@@ -56,7 +56,7 @@ function buildGradientVars(colors) {
 }
 
 function easeOutCubic(x) {
-    return 1 - Math.pow(1 - x, 3);
+    return 1 - (1 - x) ** 3;
 }
 function easeInCubic(x) {
     return x * x * x;

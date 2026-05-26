@@ -26,13 +26,11 @@ function getClientKey(req, keyPrefix) {
 	const forwardedFor = req.headers["x-forwarded-for"];
 	const ip = Array.isArray(forwardedFor)
 		? forwardedFor[0]
-		: forwardedFor?.split(",")[0]?.trim() ||
-			req.ip ||
-			req.socket.remoteAddress;
+		: forwardedFor?.split(",")[0]?.trim() || req.ip || req.socket.remoteAddress;
 	return `${keyPrefix}:ip:${ip || "unknown"}`;
 }
 
-async function checkRedis(key, windowMs, max) {
+async function checkRedis(key, windowMs) {
 	const redis = getRedis();
 	if (!redis) return null;
 
@@ -59,7 +57,7 @@ async function checkRedis(key, windowMs, max) {
 			count,
 			resetAt: Date.now() + ttlMs,
 		};
-	} catch (err) {
+	} catch {
 		// Don't log per-request — the redis client already logs reconnects.
 		return null;
 	}
@@ -89,7 +87,7 @@ export function rateLimit({
 	return async (req, res, next) => {
 		const key = getClientKey(req, keyPrefix);
 
-		let state = await checkRedis(key, windowMs, max);
+		let state = await checkRedis(key, windowMs);
 
 		// Fall through to in-memory only if Redis didn't return a usable result.
 		if (!state) {

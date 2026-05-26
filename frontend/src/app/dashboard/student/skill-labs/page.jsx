@@ -1,190 +1,165 @@
 "use client";
 
-import Card from "@/app/components/ui/Card";
+import Link from "next/link";
+import { useEffect, useState } from "react";
 import TopBar from "@/features/dashboard/components/ui/layout/TopBar/TopBar";
+import Panel from "@/features/dashboard/components/ui/widgets/Panel.jsx";
+import {
+    getExercises,
+    LAB_TECH_ORDER,
+    LAB_TECHS,
+} from "@/features/dashboard/labs/labConfigs";
+import { listSavedExerciseIds } from "@/features/dashboard/labs/labStorage";
 
-const SkillLabsPage = () => {
-  const labs = [
-    {
-      id: 1,
-      title: "React Component Builder",
-      description: "Build interactive React components with real-time preview",
-      difficulty: "Intermediate",
-      duration: "45 min",
-      technologies: ["React", "JavaScript", "CSS"],
-      status: "available",
-    },
-    {
-      id: 2,
-      title: "API Integration Lab",
-      description: "Connect to REST APIs and handle data fetching",
-      difficulty: "Beginner",
-      duration: "30 min",
-      technologies: ["JavaScript", "Fetch API", "JSON"],
-      status: "available",
-    },
-    {
-      id: 3,
-      title: "Data Visualization Dashboard",
-      description: "Create charts and graphs using D3.js",
-      difficulty: "Advanced",
-      duration: "60 min",
-      technologies: ["D3.js", "SVG", "Data Processing"],
-      status: "coming_soon",
-    },
-    {
-      id: 4,
-      title: "Machine Learning Model Training",
-      description: "Train a simple ML model with TensorFlow.js",
-      difficulty: "Advanced",
-      duration: "90 min",
-      technologies: ["TensorFlow.js", "Python", "Data Science"],
-      status: "coming_soon",
-    },
-  ];
+/**
+ * Skill Labs landing — one card per technology. Each card deep-links into
+ * its own dedicated `/skill-labs/{techId}` route where the actual editor
+ * runs. All exercises and saved-progress hints come from the centralized
+ * labConfigs + labStorage; the cards don't know how the editor works.
+ */
 
-  const getDifficultyColor = (difficulty) => {
-    switch (difficulty) {
-      case "Beginner":
-        return "#22c55e";
-      case "Intermediate":
-        return "#f59e0b";
-      case "Advanced":
-        return "#ef4444";
-      default:
-        return "var(--dashboard-muted)";
-    }
-  };
+const SkillLabsLandingPage = () => {
+    // Read saved counts on mount. We don't subscribe to localStorage
+    // changes — the user will see fresh counts next time they revisit
+    // the landing page, which is the only place the badge appears.
+    const [savedCounts, setSavedCounts] = useState({});
 
-  return (
-    <div className="space-y-5" style={{ color: "var(--dashboard-fg)" }}>
-      <TopBar
-        title="Skill Labs"
-        subtitle="Sandboxed environments for hands-on practice"
-      />
+    useEffect(() => {
+        const counts = {};
+        for (const techId of LAB_TECH_ORDER) {
+            counts[techId] = listSavedExerciseIds(techId).length;
+        }
+        setSavedCounts(counts);
+    }, []);
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {labs.map((lab) => (
-          <Card
-            key={lab.id}
-            className={`border cursor-pointer hover:shadow-lg transition-all ${
-              lab.status === "coming_soon" ? "opacity-75" : ""
-            }`}
-            style={{
-              borderColor: "var(--dashboard-border)",
-              backgroundColor: "var(--dashboard-surface)",
-            }}
-          >
-            <div className="flex items-start justify-between mb-3">
-              <h3 className="text-lg font-semibold" style={{ color: "var(--dashboard-fg)" }}>
-                {lab.title}
-              </h3>
-              {lab.status === "coming_soon" && (
-                <span
-                  className="px-2 py-1 text-xs rounded-full"
-                  style={{
-                    backgroundColor: "var(--dashboard-muted)",
-                    color: "var(--dashboard-surface)",
-                  }}
-                >
-                  Coming Soon
-                </span>
-              )}
-            </div>
+    return (
+        <div className="space-y-5" style={{ color: "var(--dashboard-fg)" }}>
+            <TopBar
+                title="Skill Labs"
+                subtitle="Pick a technology and start practicing. Everything runs in your browser."
+            />
 
-            <p className="text-sm mb-4" style={{ color: "var(--dashboard-muted)" }}>
-              {lab.description}
-            </p>
-
-            <div className="space-y-2 mb-4">
-              <div className="flex items-center justify-between text-sm">
-                <span style={{ color: "var(--dashboard-muted)" }}>Difficulty:</span>
-                <span style={{ color: getDifficultyColor(lab.difficulty) }}>
-                  {lab.difficulty}
-                </span>
-              </div>
-              <div className="flex items-center justify-between text-sm">
-                <span style={{ color: "var(--dashboard-muted)" }}>Duration:</span>
-                <span style={{ color: "var(--dashboard-fg)" }}>{lab.duration}</span>
-              </div>
-            </div>
-
-            <div className="mb-4">
-              <p className="text-sm mb-2" style={{ color: "var(--dashboard-muted)" }}>
-                Technologies:
-              </p>
-              <div className="flex flex-wrap gap-1">
-                {lab.technologies.map((tech) => (
-                  <span
-                    key={tech}
-                    className="px-2 py-1 text-xs rounded-md"
-                    style={{
-                      backgroundColor: "color-mix(in srgb, var(--dashboard-surface) 80%, var(--dashboard-primary) 20%)",
-                      color: "var(--dashboard-primary)",
-                    }}
-                  >
-                    {tech}
-                  </span>
-                ))}
-              </div>
-            </div>
-
-            <button
-              className={`w-full py-2 px-4 rounded-md text-sm font-medium transition-colors ${
-                lab.status === "coming_soon"
-                  ? "cursor-not-allowed"
-                  : "hover:opacity-90"
-              }`}
-              disabled={lab.status === "coming_soon"}
-              style={{
-                backgroundColor: lab.status === "coming_soon" ? "var(--dashboard-muted)" : "var(--dashboard-primary)",
-                color: lab.status === "coming_soon" ? "var(--dashboard-surface)" : "var(--dashboard-primary-fg)",
-              }}
+            <Panel
+                eyebrow="Browser sandbox"
+                title="Practice by technology"
+                description="Each lab gives you starter code, exercises, a sandboxed live preview, and per-exercise local save slots."
             >
-              {lab.status === "coming_soon" ? "Coming Soon" : "Start Lab"}
-            </button>
-          </Card>
-        ))}
-      </div>
-
-      {/* Lab Environment Info */}
-      <Card
-        className="border"
-        style={{
-          borderColor: "var(--dashboard-border)",
-          backgroundColor: "var(--dashboard-surface)",
-        }}
-      >
-        <h3 className="text-lg font-semibold mb-4" style={{ color: "var(--dashboard-fg)" }}>
-          Lab Environment
-        </h3>
-        <div className="grid gap-4 md:grid-cols-2">
-          <div>
-            <h4 className="font-medium mb-2" style={{ color: "var(--dashboard-fg)" }}>
-              Features
-            </h4>
-            <ul className="text-sm space-y-1" style={{ color: "var(--dashboard-muted)" }}>
-              <li>• Real-time code execution</li>
-              <li>• Auto-save progress</li>
-              <li>• Integrated debugging tools</li>
-              <li>• Collaborative coding (coming soon)</li>
-            </ul>
-          </div>
-          <div>
-            <h4 className="font-medium mb-2" style={{ color: "var(--dashboard-fg)" }}>
-              Supported Languages
-            </h4>
-            <ul className="text-sm space-y-1" style={{ color: "var(--dashboard-muted)" }}>
-              <li>• JavaScript/TypeScript</li>
-              <li>• Python</li>
-              <li>• HTML/CSS</li>
-              <li>• SQL</li>
-            </ul>
-          </div>
+                <ul className="grid gap-4 md:grid-cols-2">
+                    {LAB_TECH_ORDER.map((techId) => (
+                        <li key={techId}>
+                            <TechCard
+                                tech={LAB_TECHS[techId]}
+                                exerciseCount={getExercises(techId).length}
+                                savedCount={savedCounts[techId] ?? 0}
+                            />
+                        </li>
+                    ))}
+                </ul>
+            </Panel>
         </div>
-      </Card>
-    </div>
-  );
+    );
 };
 
-export default SkillLabsPage;
+const TechCard = ({ tech, exerciseCount, savedCount }) => {
+    const progress = exerciseCount
+        ? Math.min(100, (savedCount / exerciseCount) * 100)
+        : 0;
+    return (
+        <Link
+            href={`/dashboard/student/skill-labs/${tech.id}`}
+            className="group block cursor-pointer rounded-xl border p-5 transition hover:opacity-95 focus:outline-none focus:ring-2"
+            style={{
+                borderColor: "var(--dashboard-border)",
+                backgroundColor: "var(--dashboard-surface)",
+                boxShadow: "var(--dashboard-shadow)",
+            }}
+            aria-label={`Open ${tech.label} lab`}
+        >
+            <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                    <div className="flex items-center gap-3">
+                        <span
+                            className="cursor-default inline-flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg text-sm font-bold"
+                            style={{
+                                backgroundColor: tech.accent,
+                                color: "#ffffff",
+                            }}
+                            aria-hidden="true"
+                        >
+                            {tech.label.slice(0, 2)}
+                        </span>
+                        <div className="min-w-0">
+                            <p
+                                className="cursor-default text-[10px] uppercase tracking-[0.22em]"
+                                style={{ color: "var(--dashboard-muted)" }}
+                            >
+                                {tech.tagline}
+                            </p>
+                            <h3
+                                className="font-display text-lg"
+                                style={{ color: "var(--dashboard-fg)" }}
+                            >
+                                {tech.title}
+                            </h3>
+                        </div>
+                    </div>
+                </div>
+                <span
+                    className="cursor-default whitespace-nowrap rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide"
+                    style={{
+                        backgroundColor: "var(--dashboard-border)",
+                        color: "var(--dashboard-muted)",
+                    }}
+                >
+                    {tech.difficulty}
+                </span>
+            </div>
+
+            <p
+                className="mt-3 text-sm"
+                style={{ color: "var(--dashboard-muted)" }}
+            >
+                {tech.description}
+            </p>
+
+            <div className="mt-4 flex items-center gap-3">
+                <div
+                    className="progress-track h-1.5 flex-1 overflow-hidden rounded-full"
+                    aria-hidden="true"
+                >
+                    <div
+                        className="h-full rounded-full transition-all"
+                        style={{
+                            width: `${progress}%`,
+                            backgroundColor: tech.accent,
+                        }}
+                    />
+                </div>
+                <span
+                    className="cursor-default text-xs"
+                    style={{ color: "var(--dashboard-muted)" }}
+                >
+                    {savedCount}/{exerciseCount} saved
+                </span>
+            </div>
+
+            <div className="mt-4 flex items-center justify-between">
+                <span
+                    className="cursor-default text-xs"
+                    style={{ color: "var(--dashboard-muted)" }}
+                >
+                    {exerciseCount} exercise
+                    {exerciseCount === 1 ? "" : "s"}
+                </span>
+                <span
+                    className="text-sm font-semibold transition group-hover:translate-x-0.5"
+                    style={{ color: tech.accent }}
+                >
+                    Start practice →
+                </span>
+            </div>
+        </Link>
+    );
+};
+
+export default SkillLabsLandingPage;

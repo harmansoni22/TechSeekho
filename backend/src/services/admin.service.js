@@ -139,9 +139,17 @@ export async function getPlatformOverview(user) {
 		generatedAt: new Date().toISOString(),
 
 		kpis: [
-			{ label: "Institutions", value: institutionCount, hint: `${activeInstitutionCount} active` },
+			{
+				label: "Institutions",
+				value: institutionCount,
+				hint: `${activeInstitutionCount} active`,
+			},
 			{ label: "Users", value: userCount, hint: `${activeUserCount} active` },
-			{ label: "Batches", value: batchCount, hint: `${activeBatchCount} active` },
+			{
+				label: "Batches",
+				value: batchCount,
+				hint: `${activeBatchCount} active`,
+			},
 			{
 				label: "Attendance (30d)",
 				value: attendanceRate30d === null ? "—" : `${attendanceRate30d}%`,

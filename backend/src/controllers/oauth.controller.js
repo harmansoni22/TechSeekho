@@ -1,5 +1,4 @@
 import prisma from "../config/db.js";
-import { findUserByEmail } from "../services/users.service.js";
 import { AppError } from "../utils/appError.js";
 import { generateToken } from "../utils/auth.js";
 
@@ -20,46 +19,64 @@ async function fetchWithTimeout(url, options = {}) {
 	}
 }
 
-async function verifyProviderToken(provider, { idToken, accessToken, providerAccountId, email }) {
+/**
+ * Verify that the caller actually controls the OAuth account they claim to.
+ *
+ * Both checks must pass:
+ *   1. The provider's reported `sub`/`id` matches `providerAccountId` from the body.
+ *   2. The provider's reported email matches the email in the body.
+ *
+ * Previously this used OR semantics, which let an attacker who controlled
+ * Google account A submit a body with email=victim@example.com,
+ * providerAccountId=A_sub, and their own idToken — the sub check passed and
+ * the email check was short-circuited, allowing them to hijack the existing
+ * victim account during the upsert.
+ */
+async function verifyProviderToken(
+	provider,
+	{ idToken, accessToken, providerAccountId, email },
+) {
 	const p = String(provider || "").toLowerCase();
-
-	// Helper to safely normalize email for comparison
-	const normalizedExpectedEmail = normalizeEmail(email);
+	const expectedEmail = normalizeEmail(email);
+	if (!expectedEmail) return false;
 
 	try {
 		if (p === "google") {
+			let info = null;
 			if (idToken) {
-				const tokenInfoUrl = `https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(idToken)}`;
-				const r = await fetchWithTimeout(tokenInfoUrl);
+				const url = `https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(idToken)}`;
+				const r = await fetchWithTimeout(url);
 				if (!r.ok) return false;
-				const info = await r.json();
-				const sub = String(info.sub || "");
-				const infoEmail = normalizeEmail(info.email);
-				if (sub === String(providerAccountId) || (infoEmail && infoEmail === normalizedExpectedEmail)) {
-					return true;
-				}
+				info = await r.json();
+			} else if (accessToken) {
+				const r = await fetchWithTimeout(
+					"https://www.googleapis.com/oauth2/v3/userinfo",
+					{ headers: { Authorization: `Bearer ${accessToken}` } },
+				);
+				if (!r.ok) return false;
+				info = await r.json();
+			} else {
 				return false;
 			}
 
-			if (accessToken) {
-				const r = await fetchWithTimeout("https://www.googleapis.com/oauth2/v3/userinfo", {
-					headers: { Authorization: `Bearer ${accessToken}` },
-				});
-				if (!r.ok) return false;
-				const info = await r.json();
-				const sub = String(info.sub || "");
-				const infoEmail = normalizeEmail(info.email);
-				if (sub === String(providerAccountId) || (infoEmail && infoEmail === normalizedExpectedEmail)) {
-					return true;
-				}
-				return false;
-			}
+			const sub = String(info.sub || "");
+			const infoEmail = normalizeEmail(info.email);
+			// Google must also report email_verified=true for the id_token path
+			// to be trustworthy; the userinfo path doesn't include that flag.
+			const emailVerifiedOk =
+				info.email_verified === undefined ||
+				info.email_verified === true ||
+				info.email_verified === "true";
 
-			return false;
+			return (
+				sub === String(providerAccountId) &&
+				Boolean(infoEmail) &&
+				infoEmail === expectedEmail &&
+				emailVerifiedOk
+			);
 		}
 
 		if (p === "github") {
-			// GitHub provides accessToken (no id_token). Verify via /user and /user/emails
 			if (!accessToken) return false;
 
 			const r = await fetchWithTimeout("https://api.github.com/user", {
@@ -71,37 +88,37 @@ async function verifyProviderToken(provider, { idToken, accessToken, providerAcc
 			if (!r.ok) return false;
 			const info = await r.json();
 			const ghId = String(info.id || "");
-			const login = String(info.login || "");
-			if (ghId === String(providerAccountId) || login === String(providerAccountId)) {
-				// try to verify email if available
-				let primaryEmail = info.email || null;
-				if (!primaryEmail) {
-					const r2 = await fetchWithTimeout("https://api.github.com/user/emails", {
+			const idMatches = ghId === String(providerAccountId) && ghId.length > 0;
+			if (!idMatches) return false;
+
+			// Resolve the GitHub account's verified primary email.
+			let primaryEmail = normalizeEmail(info.email);
+			if (!primaryEmail) {
+				const r2 = await fetchWithTimeout(
+					"https://api.github.com/user/emails",
+					{
 						headers: {
 							Authorization: `Bearer ${accessToken}`,
 							"User-Agent": "techseekho-app",
 						},
-					});
-					if (r2.ok) {
-						const emails = await r2.json();
-						const primary = (Array.isArray(emails) && (emails.find(e => e.primary) || emails[0])) || null;
-						if (primary) primaryEmail = primary.email;
-					}
-				}
-
-				if (primaryEmail && normalizeEmail(primaryEmail) !== normalizedExpectedEmail) {
-					return false;
-				}
-
-				return true;
+					},
+				);
+				if (!r2.ok) return false;
+				const emails = await r2.json();
+				if (!Array.isArray(emails)) return false;
+				const primary =
+					emails.find((e) => e.primary && e.verified) ||
+					emails.find((e) => e.verified) ||
+					null;
+				primaryEmail = primary ? normalizeEmail(primary.email) : null;
 			}
 
-			return false;
+			return Boolean(primaryEmail) && primaryEmail === expectedEmail;
 		}
 
-		// Unknown provider: do not verify here
+		// Unknown provider: refuse.
 		return false;
-	} catch (err) {
+	} catch {
 		return false;
 	}
 }
@@ -145,7 +162,11 @@ export async function oauthLogin(req, res) {
 	});
 
 	if (!ok) {
-		throw new AppError("OAuth token verification failed", 401, "OAUTH_VERIFICATION_FAILED");
+		throw new AppError(
+			"OAuth token verification failed",
+			401,
+			"OAUTH_VERIFICATION_FAILED",
+		);
 	}
 
 	if (!fullName || typeof fullName !== "string") {

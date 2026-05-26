@@ -3,11 +3,7 @@
 import { useSession } from "next-auth/react";
 import { createContext, useContext, useMemo } from "react";
 import { resolveRoleDestination } from "@/lib/roleRouter";
-import {
-    FALLBACK_ROLE_THEME,
-    getRoleTheme,
-    roleThemeCssVars,
-} from "../theme/roleThemes";
+import { FALLBACK_ROLE_THEME, getRoleTheme } from "../theme/roleThemes";
 
 const RoleThemeContext = createContext({
     role: null,
@@ -16,11 +12,13 @@ const RoleThemeContext = createContext({
 
 /**
  * Resolves the active role from the authenticated session and exposes the
- * matching role theme (accent palette + tagline + monogram) to descendants.
+ * role metadata (monogram, label, tagline) to descendants.
  *
- * The CSS variable layer (--role-accent, --role-accent-soft, --role-glow, …)
- * is published on a wrapping <div data-role={ROLE}> so every dashboard page
- * can use `var(--role-accent)` without prop-drilling.
+ * Note: the CSS accent variables (`--role-accent`, `--role-accent-ink`,
+ * `--role-accent-soft`, `--role-glow`, …) are NOT published here anymore.
+ * They live in the dashboard-theme namespace (`themeApplier.js`) so the
+ * theme picker in Settings fully owns the palette. Role identity is signaled
+ * by the monogram letter and RoleHero copy, not by color.
  *
  * Authentication and authorization are handled by DashboardAuthGate. This
  * provider trusts the session it observes — if no role is present the
@@ -53,13 +51,12 @@ export function RoleThemeProvider({ children }) {
         [activeRoleKey, theme],
     );
 
-    const cssVars = roleThemeCssVars(theme);
-
     return (
         <RoleThemeContext.Provider value={value}>
-            <div data-role={activeRoleKey || "UNKNOWN"} style={cssVars}>
-                {children}
-            </div>
+            {/* `data-role` is kept so role-specific CSS hooks can target it
+                later; we no longer inject role-accent vars here because the
+                dashboard theme owns the accent palette. */}
+            <div data-role={activeRoleKey || "UNKNOWN"}>{children}</div>
         </RoleThemeContext.Provider>
     );
 }

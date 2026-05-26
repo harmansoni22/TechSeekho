@@ -10,107 +10,73 @@ import {
 import { audit } from "./audit.service.js";
 
 function isSuperAdmin(user) {
-	return user.roles.includes(
-		"SUPER_ADMIN"
-	);
+	return user.roles.includes("SUPER_ADMIN");
 }
 
 function isInstitutionAdmin(user) {
-	return user.roles.includes(
-		"ADMIN"
-	);
+	return user.roles.includes("ADMIN");
 }
 
 function isCoordinator(user) {
-	return user.roles.includes(
-		"INSTITUTION_COORDINATOR"
-	);
+	return user.roles.includes("INSTITUTION_COORDINATOR");
 }
 
-function requireInstitutionManager(
-	user
-) {
-	if (
-		isSuperAdmin(user) ||
-		isInstitutionAdmin(user) ||
-		isCoordinator(user)
-	) {
+// Read-side gate: anyone with operational visibility into the institution
+// (super admin, admin, coordinator) can call. Used for list/get operations.
+function requireInstitutionManager(user) {
+	if (isSuperAdmin(user) || isInstitutionAdmin(user) || isCoordinator(user)) {
 		return;
 	}
-
-	throw new AppError(
-		"Insufficient permissions",
-		403
-	);
+	throw new AppError("Insufficient permissions", 403);
 }
 
-function getAccessibleInstitutionIds(
-	user
-) {
-	return (
-		user.roleAssignments || []
-	)
-		.map(
-			(assignment) =>
-				assignment.institutionId
-		)
+// Write-side gate: coordinator is projection-only and cannot mutate batches,
+// trainer assignments, or student assignments. Use this for any service path
+// that writes to operational records.
+function requireInstitutionAdmin(user) {
+	if (isSuperAdmin(user) || isInstitutionAdmin(user)) {
+		return;
+	}
+	throw new AppError("Insufficient permissions", 403);
+}
+
+function getAccessibleInstitutionIds(user) {
+	return (user.roleAssignments || [])
+		.map((assignment) => assignment.institutionId)
 		.filter(Boolean);
 }
 
-async function assertInstitutionAccess(
-	user,
-	institutionId
-) {
+async function assertInstitutionAccess(user, institutionId) {
 	if (isSuperAdmin(user)) {
 		return;
 	}
 
-	const accessibleInstitutionIds =
-		getAccessibleInstitutionIds(
-			user
-		);
+	const accessibleInstitutionIds = getAccessibleInstitutionIds(user);
 
-	if (
-		!accessibleInstitutionIds.includes(
-			institutionId
-		)
-	) {
-		throw new AppError(
-			"Institution access denied",
-			403
-		);
+	if (!accessibleInstitutionIds.includes(institutionId)) {
+		throw new AppError("Institution access denied", 403);
 	}
 }
 
-async function getBatchOrThrow(
-	batchId
-) {
-	const batch =
-		await prisma.batch.findUnique({
-			where: { id: batchId },
+async function getBatchOrThrow(batchId) {
+	const batch = await prisma.batch.findUnique({
+		where: { id: batchId },
 
-			select: {
-				id: true,
-				institutionId: true,
-			},
-		});
+		select: {
+			id: true,
+			institutionId: true,
+		},
+	});
 
 	if (!batch) {
-		throw new AppError(
-			"Batch not found",
-			404
-		);
+		throw new AppError("Batch not found", 404);
 	}
 
 	return batch;
 }
 
-export async function listInstitutions(
-	user
-) {
-	requireInstitutionManager(
-		user
-	);
+export async function listInstitutions(user) {
+	requireInstitutionManager(user);
 
 	// Super admin sees all
 	if (isSuperAdmin(user)) {
@@ -131,10 +97,7 @@ export async function listInstitutions(
 		});
 	}
 
-	const institutionIds =
-		getAccessibleInstitutionIds(
-			user
-		);
+	const institutionIds = getAccessibleInstitutionIds(user);
 
 	return prisma.institution.findMany({
 		where: {
@@ -159,25 +122,13 @@ export async function listInstitutions(
 	});
 }
 
-export async function createInstitution(
-	user,
-	payload
-) {
+export async function createInstitution(user, payload) {
 	if (!isSuperAdmin(user)) {
-		throw new AppError(
-			"Only super admins can create institutions",
-			403
-		);
+		throw new AppError("Only super admins can create institutions", 403);
 	}
 
-	if (
-		!payload.name ||
-		!payload.type
-	) {
-		throw new AppError(
-			"Institution name and type are required",
-			400
-		);
+	if (!payload.name || !payload.type) {
+		throw new AppError("Institution name and type are required", 400);
 	}
 
 	return prisma.institution.create({
@@ -186,27 +137,17 @@ export async function createInstitution(
 
 			type: payload.type,
 
-			city:
-				payload.city || null,
+			city: payload.city || null,
 
-			state:
-				payload.state || null,
+			state: payload.state || null,
 
-			address:
-				payload.address ||
-				null,
+			address: payload.address || null,
 
-			contactEmail:
-				payload.contactEmail ||
-				null,
+			contactEmail: payload.contactEmail || null,
 
-			contactPhone:
-				payload.contactPhone ||
-				null,
+			contactPhone: payload.contactPhone || null,
 
-			isActive:
-				payload.isActive ??
-				true,
+			isActive: payload.isActive ?? true,
 		},
 	});
 }
@@ -310,7 +251,7 @@ export async function getBatchDetail(user, batchId) {
 }
 
 export async function removeTrainerFromBatch(user, batchId, trainerId) {
-	requireInstitutionManager(user);
+	requireInstitutionAdmin(user);
 
 	const batch = await getBatchOrThrow(batchId);
 	await assertInstitutionAccess(user, batch.institutionId);
@@ -336,7 +277,7 @@ export async function removeTrainerFromBatch(user, batchId, trainerId) {
 }
 
 export async function removeStudentFromBatch(user, batchId, studentId) {
-	requireInstitutionManager(user);
+	requireInstitutionAdmin(user);
 
 	const batch = await getBatchOrThrow(batchId);
 	await assertInstitutionAccess(user, batch.institutionId);
@@ -393,12 +334,12 @@ export async function listInstitutionMembers(user, institutionId, role) {
 			studentProfile:
 				normalizedRole === "STUDENT"
 					? {
-						select: {
-							id: true,
-							enrollmentNumber: true,
-							currentBatchId: true,
-						},
-					}
+							select: {
+								id: true,
+								enrollmentNumber: true,
+								currentBatchId: true,
+							},
+						}
 					: false,
 		},
 		orderBy: { fullName: "asc" },
@@ -411,55 +352,39 @@ export async function listInstitutionMembers(user, institutionId, role) {
 		phone: u.phone,
 		profileId:
 			normalizedRole === "TRAINER"
-				? u.trainerProfile?.id ?? null
-				: u.studentProfile?.id ?? null,
+				? (u.trainerProfile?.id ?? null)
+				: (u.studentProfile?.id ?? null),
 		specialization: u.trainerProfile?.specialization ?? null,
 		enrollmentNumber: u.studentProfile?.enrollmentNumber ?? null,
 		currentBatchId: u.studentProfile?.currentBatchId ?? null,
 	}));
 }
 
-export async function listBatches(
-	user,
-	filters = {}
-) {
+export async function listBatches(user, filters = {}) {
 	const where = {};
 
 	// Institution filtering
 	if (filters.institutionId) {
-		await assertInstitutionAccess(
-			user,
-			filters.institutionId
-		);
+		await assertInstitutionAccess(user, filters.institutionId);
 
-		where.institutionId =
-			filters.institutionId;
+		where.institutionId = filters.institutionId;
 	}
 
 	if (filters.courseId) {
-		where.courseId =
-			filters.courseId;
+		where.courseId = filters.courseId;
 	}
 
 	// Trainer scope
-	if (
-		!isPrivileged(user) &&
-		user.roles.includes(
-			"TRAINER"
-		)
-	) {
-		const trainer =
-			await prisma.trainerProfile.findUnique(
-				{
-					where: {
-						userId: user.id,
-					},
+	if (!isPrivileged(user) && user.roles.includes("TRAINER")) {
+		const trainer = await prisma.trainerProfile.findUnique({
+			where: {
+				userId: user.id,
+			},
 
-					select: {
-						id: true,
-					},
-				}
-			);
+			select: {
+				id: true,
+			},
+		});
 
 		if (!trainer) {
 			return [];
@@ -467,55 +392,36 @@ export async function listBatches(
 
 		where.trainers = {
 			some: {
-				trainerId:
-					trainer.id,
+				trainerId: trainer.id,
 			},
 		};
 	}
 
 	// Student scope
-	if (
-		!isPrivileged(user) &&
-		user.roles.includes(
-			"STUDENT"
-		)
-	) {
-		const student =
-			await prisma.studentProfile.findUnique(
-				{
-					where: {
-						userId: user.id,
-					},
+	if (!isPrivileged(user) && user.roles.includes("STUDENT")) {
+		const student = await prisma.studentProfile.findUnique({
+			where: {
+				userId: user.id,
+			},
 
-					select: {
-						currentBatchId:
-							true,
-					},
-				}
-			);
+			select: {
+				currentBatchId: true,
+			},
+		});
 
-		if (
-			!student?.currentBatchId
-		) {
+		if (!student?.currentBatchId) {
 			return [];
 		}
 
-		where.id =
-			student.currentBatchId;
+		where.id = student.currentBatchId;
 	}
 
 	// Institution-scoped admin/coordinator
 	if (
 		!isSuperAdmin(user) &&
-		(isInstitutionAdmin(
-			user
-		) ||
-			isCoordinator(user))
+		(isInstitutionAdmin(user) || isCoordinator(user))
 	) {
-		const institutionIds =
-			getAccessibleInstitutionIds(
-				user
-			);
+		const institutionIds = getAccessibleInstitutionIds(user);
 
 		where.institutionId = {
 			in: institutionIds,
@@ -555,13 +461,8 @@ export async function listBatches(
 	});
 }
 
-export async function createBatch(
-	user,
-	payload
-) {
-	requireInstitutionManager(
-		user
-	);
+export async function createBatch(user, payload) {
+	requireInstitutionAdmin(user);
 
 	if (
 		!payload.name ||
@@ -571,53 +472,31 @@ export async function createBatch(
 	) {
 		throw new AppError(
 			"name, institutionId, courseId, and startDate are required",
-			400
+			400,
 		);
 	}
 
-	await assertInstitutionAccess(
-		user,
-		payload.institutionId
-	);
+	await assertInstitutionAccess(user, payload.institutionId);
 
 	return prisma.batch.create({
 		data: {
 			name: payload.name,
 
-			institutionId:
-				payload.institutionId,
+			institutionId: payload.institutionId,
 
-			courseId:
-				payload.courseId,
+			courseId: payload.courseId,
 
-			startDate:
-				new Date(
-					payload.startDate
-				),
+			startDate: new Date(payload.startDate),
 
-			endDate:
-				payload.endDate
-					? new Date(
-							payload.endDate
-					  )
-					: null,
+			endDate: payload.endDate ? new Date(payload.endDate) : null,
 
-			isActive:
-				payload.isActive ??
-				true,
+			isActive: payload.isActive ?? true,
 		},
 	});
 }
 
-export async function updateBatch(
-	user,
-	id,
-	payload
-) {
-	await assertCanManageBatch(
-		user,
-		id
-	);
+export async function updateBatch(user, id, payload) {
+	await assertCanManageBatch(user, id);
 
 	return prisma.batch.update({
 		where: { id },
@@ -625,32 +504,17 @@ export async function updateBatch(
 		data: {
 			name: payload.name,
 
-			startDate:
-				payload.startDate
-					? new Date(
-							payload.startDate
-					  )
-					: undefined,
+			startDate: payload.startDate ? new Date(payload.startDate) : undefined,
 
-			endDate:
-				payload.endDate
-					? new Date(
-							payload.endDate
-					  )
-					: undefined,
+			endDate: payload.endDate ? new Date(payload.endDate) : undefined,
 
-			isActive:
-				payload.isActive,
+			isActive: payload.isActive,
 		},
 	});
 }
 
-export async function assignTrainerToBatch(
-	user,
-	batchId,
-	trainerId
-) {
-	requireInstitutionManager(user);
+export async function assignTrainerToBatch(user, batchId, trainerId) {
+	requireInstitutionAdmin(user);
 
 	if (!trainerId) {
 		throw new AppError("trainerId is required", 400);
@@ -685,10 +549,7 @@ export async function assignTrainerToBatch(
 		.filter(Boolean);
 
 	if (!trainerInstitutionIds.includes(batch.institutionId)) {
-		throw new AppError(
-			"Trainer is not affiliated with this institution",
-			403
-		);
+		throw new AppError("Trainer is not affiliated with this institution", 403);
 	}
 
 	const link = await prisma.batchTrainer.upsert({
@@ -711,12 +572,8 @@ export async function assignTrainerToBatch(
 	return link;
 }
 
-export async function assignStudentToBatch(
-	user,
-	batchId,
-	studentId
-) {
-	requireInstitutionManager(user);
+export async function assignStudentToBatch(user, batchId, studentId) {
+	requireInstitutionAdmin(user);
 
 	if (!studentId) {
 		throw new AppError("studentId is required", 400);
@@ -751,7 +608,7 @@ export async function assignStudentToBatch(
 		[
 			student.currentBatch?.institutionId,
 			...(student.user?.roleAssignments || []).map((a) => a.institutionId),
-		].filter(Boolean)
+		].filter(Boolean),
 	);
 
 	// Allow if super admin OR the student already has any link to the target
@@ -762,10 +619,7 @@ export async function assignStudentToBatch(
 		studentInstitutionIds.size > 0 &&
 		!studentInstitutionIds.has(batch.institutionId)
 	) {
-		throw new AppError(
-			"Student is not affiliated with this institution",
-			403
-		);
+		throw new AppError("Student is not affiliated with this institution", 403);
 	}
 
 	return prisma.studentProfile.update({
@@ -774,23 +628,16 @@ export async function assignStudentToBatch(
 	});
 }
 
-export async function listAnnouncements(
-	user,
-	filters = {}
-) {
+export async function listAnnouncements(user, filters = {}) {
 	if (filters.batchId) {
-		await assertCanAccessBatch(
-			user,
-			filters.batchId
-		);
+		await assertCanAccessBatch(user, filters.batchId);
 	}
 
 	return prisma.announcement.findMany({
 		where: filters.batchId
 			? {
-					batchId:
-						filters.batchId,
-			  }
+					batchId: filters.batchId,
+				}
 			: {},
 
 		include: {
@@ -813,55 +660,29 @@ export async function listAnnouncements(
 			createdAt: "desc",
 		},
 
-		take: filters.limit
-			? Math.min(
-					Number(
-						filters.limit
-					),
-					100
-			  )
-			: 100,
+		take: filters.limit ? Math.min(Number(filters.limit), 100) : 100,
 	});
 }
 
-export async function createAnnouncement(
-	user,
-	payload
-) {
-	if (
-		!payload.title ||
-		!payload.content ||
-		!payload.batchId
-	) {
-		throw new AppError(
-			"title, content, and batchId are required",
-			400
-		);
+export async function createAnnouncement(user, payload) {
+	if (!payload.title || !payload.content || !payload.batchId) {
+		throw new AppError("title, content, and batchId are required", 400);
 	}
 
-	await assertCanManageBatch(
-		user,
-		payload.batchId
-	);
+	await assertCanManageBatch(user, payload.batchId);
 
-	const batch =
-		await getBatchOrThrow(
-			payload.batchId
-		);
+	const batch = await getBatchOrThrow(payload.batchId);
 
 	return prisma.announcement.create({
 		data: {
 			title: payload.title,
 
-			content:
-				payload.content,
+			content: payload.content,
 
-			batchId:
-				payload.batchId,
+			batchId: payload.batchId,
 
 			// NEVER trust client ownership
-			institutionId:
-				batch.institutionId,
+			institutionId: batch.institutionId,
 
 			authorId: user.id,
 		},

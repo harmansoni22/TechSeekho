@@ -19,7 +19,13 @@ const presignLimiter = rateLimit({
 router.post(
 	"/presign",
 	presignLimiter,
-	requireRole("STUDENT", "TRAINER", "INSTITUTION_COORDINATOR", "ADMIN", "SUPER_ADMIN"),
+	requireRole(
+		"STUDENT",
+		"TRAINER",
+		"INSTITUTION_COORDINATOR",
+		"ADMIN",
+		"SUPER_ADMIN",
+	),
 	validate({ body: presignUploadSchema }),
 	(req, res, next) => presignUploadController(req, res).catch(next),
 );

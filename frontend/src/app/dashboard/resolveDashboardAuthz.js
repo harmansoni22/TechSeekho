@@ -1,53 +1,42 @@
 import dashboardRoutePermissions from "./dashboardRoutePermissions";
 
 function normalizeRole(role) {
-	return String(role || "").toUpperCase();
+    return String(role || "").toUpperCase();
 }
 
 function matchesRoute(path, routePath) {
-	const isDashboardRoot = routePath === "/dashboard";
+    const isDashboardRoot = routePath === "/dashboard";
 
-	if (isDashboardRoot) {
-		return path === "/dashboard";
-	}
+    if (isDashboardRoot) {
+        return path === "/dashboard";
+    }
 
-	return (
-		path === routePath ||
-		path.startsWith(`${routePath}/`)
-	);
+    return path === routePath || path.startsWith(`${routePath}/`);
 }
 
 export function resolveAllowedRolesForPath(pathname) {
-	const path = pathname || "/dashboard";
+    const path = pathname || "/dashboard";
 
-	const routes = Object.keys(dashboardRoutePermissions);
+    const routes = Object.keys(dashboardRoutePermissions);
 
-	let bestMatch = null;
-	let bestLen = -1;
+    let bestMatch = null;
+    let bestLen = -1;
 
-	for (const routePath of routes) {
-		const matches = matchesRoute(path, routePath);
+    for (const routePath of routes) {
+        const matches = matchesRoute(path, routePath);
 
-		if (matches && routePath.length > bestLen) {
-			bestMatch = routePath;
-			bestLen = routePath.length;
-		}
-	}
+        if (matches && routePath.length > bestLen) {
+            bestMatch = routePath;
+            bestLen = routePath.length;
+        }
+    }
 
-	return bestMatch
-		? dashboardRoutePermissions[bestMatch]
-		: [];
+    return bestMatch ? dashboardRoutePermissions[bestMatch] : [];
 }
 
-export function isRoleAuthorized({
-	roles = [],
-	allowedRoles = [],
-}) {
-	const userRoles = roles.map(normalizeRole);
-	const normalizedAllowedRoles =
-		allowedRoles.map(normalizeRole);
+export function isRoleAuthorized({ roles = [], allowedRoles = [] }) {
+    const userRoles = roles.map(normalizeRole);
+    const normalizedAllowedRoles = allowedRoles.map(normalizeRole);
 
-	return normalizedAllowedRoles.some((role) =>
-		userRoles.includes(role)
-	);
+    return normalizedAllowedRoles.some((role) => userRoles.includes(role));
 }

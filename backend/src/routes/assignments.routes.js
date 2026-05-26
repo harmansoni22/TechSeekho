@@ -26,12 +26,21 @@ router.use(requireOperationalAccess);
 
 router.get(
 	"/",
-	requireRole("STUDENT", "TRAINER", "INSTITUTION_COORDINATOR", "ADMIN", "SUPER_ADMIN"),
+	requireRole(
+		"STUDENT",
+		"TRAINER",
+		"INSTITUTION_COORDINATOR",
+		"ADMIN",
+		"SUPER_ADMIN",
+	),
 	(req, res, next) => listAssignmentsController(req, res).catch(next),
 );
+// Coordinator can VIEW assignments/submissions (read for projection dashboards)
+// but cannot CREATE or REVIEW — those are operational writes owned by trainers
+// and admins.
 router.post(
 	"/",
-	requireRole("TRAINER", "INSTITUTION_COORDINATOR", "ADMIN", "SUPER_ADMIN"),
+	requireRole("TRAINER", "ADMIN", "SUPER_ADMIN"),
 	validate({ body: createAssignmentSchema }),
 	(req, res, next) => createAssignmentController(req, res).catch(next),
 );
@@ -42,13 +51,19 @@ router.get(
 );
 router.patch(
 	"/submissions/:submissionId/review",
-	requireRole("TRAINER", "INSTITUTION_COORDINATOR", "ADMIN", "SUPER_ADMIN"),
+	requireRole("TRAINER", "ADMIN", "SUPER_ADMIN"),
 	validate({ body: reviewSubmissionSchema }),
 	(req, res, next) => reviewSubmissionController(req, res).catch(next),
 );
 router.get(
 	"/:id",
-	requireRole("STUDENT", "TRAINER", "INSTITUTION_COORDINATOR", "ADMIN", "SUPER_ADMIN"),
+	requireRole(
+		"STUDENT",
+		"TRAINER",
+		"INSTITUTION_COORDINATOR",
+		"ADMIN",
+		"SUPER_ADMIN",
+	),
 	(req, res, next) => getAssignmentController(req, res).catch(next),
 );
 router.post(

@@ -23,19 +23,27 @@ router.use(requireOperationalAccess);
 
 router.get(
 	"/",
-	requireRole("STUDENT", "TRAINER", "INSTITUTION_COORDINATOR", "ADMIN", "SUPER_ADMIN"),
+	requireRole(
+		"STUDENT",
+		"TRAINER",
+		"INSTITUTION_COORDINATOR",
+		"ADMIN",
+		"SUPER_ADMIN",
+	),
 	validate({ query: attendanceQuerySchema }),
 	(req, res, next) => listAttendanceController(req, res).catch(next),
 );
+// Coordinator can VIEW attendance for projection but cannot MARK it.
+// Marking is an operational write owned by trainers and admins.
 router.post(
 	"/",
-	requireRole("TRAINER", "INSTITUTION_COORDINATOR", "ADMIN", "SUPER_ADMIN"),
+	requireRole("TRAINER", "ADMIN", "SUPER_ADMIN"),
 	validate({ body: markAttendanceSchema }),
 	(req, res, next) => markAttendanceController(req, res).catch(next),
 );
 router.post(
 	"/bulk",
-	requireRole("TRAINER", "INSTITUTION_COORDINATOR", "ADMIN", "SUPER_ADMIN"),
+	requireRole("TRAINER", "ADMIN", "SUPER_ADMIN"),
 	validate({ body: bulkAttendanceSchema }),
 	(req, res, next) => bulkMarkAttendanceController(req, res).catch(next),
 );

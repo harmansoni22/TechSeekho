@@ -145,8 +145,7 @@ Keep `.env.example` sanitized. If a token-looking value appears there, treat it 
 ## Known sharp edges
 
 - Backend has no automated test suite yet.
-- `src/models/user.model.js` and Mongo wiring appear legacy/optional; do not build new runtime features on Mongoose without confirming intent.
-- `src/data/users.data.js` currently crashes on import because it references an undefined `id`; it is unused.
+- Mongo wiring (`src/config/mongo.js`) is optional/legacy; do not build new runtime features on Mongoose without confirming intent.
 - `Course.price` is an `Int` but the unit is not clearly documented.
 - Upload presign is scaffolded; `pipelineReady` can be false until object storage is wired.
 - OAuth-created users intentionally have `passwordHash = "!oauth-disabled"`.

@@ -122,14 +122,12 @@ Frontend env variables in active use:
 
 | Var | Purpose |
 |---|---|
-| `NEXT_PUBLIC_BACKEND` | Backend base URL for `src/lib/api.js` and `src/auth.js` |
-| `BACKEND_URL` | Backend base URL for `api/auth/internal/auth/sync` |
+| `NEXT_PUBLIC_BACKEND` | Backend base URL — used by `src/lib/api.js`, `src/auth.js`, and every `src/app/api/*/route.js` proxy |
 | `NEXTAUTH_SECRET` | Required NextAuth secret |
 | `NEXTAUTH_URL` | Canonical NextAuth URL in production |
+| `NEXTAUTH_COOKIE_DOMAIN` | Optional. When set (e.g. `.techseekho.com`), the NextAuth session cookie is scoped to the parent domain so multiple role-subdomains can share it. Leave unset for single-host deployments. |
 | `GITHUB_CLIENT_ID` / `GITHUB_SECRET` | GitHub OAuth |
 | `GOOGLE_CLIENT_ID` / `GOOGLE_SECRET` | Google OAuth |
-
-`NEXT_PUBLIC_BACKEND` and `BACKEND_URL` should point at the same backend in practice. If you consolidate them, update the proxy routes and root docs together.
 
 ## Tests
 
@@ -148,11 +146,18 @@ Add tests when changing role routing, dashboard authorization, or shared client-
 
 ## Known sharp edges
 
-- `src/app/api/auth/internal/auth/sync/route.js` appears to call a stale backend path (`/api/auth/oauth/sync`) while the backend exposes `/oauth/login`; verify before relying on that cookie sync flow.
 - Dashboard route permissions and nav config can drift. Keep them updated together.
 - Some dashboard pages are static/prototype-like while backend endpoints mature. Verify data contracts before assuming live data.
 - The app uses both `framer-motion` and `motion`; avoid adding another animation stack.
 - There are MUI, styled-components, Tailwind v4, GSAP, Lenis, and custom CSS pieces. Match local page patterns instead of standardizing globally in unrelated work.
+
+## Skill Labs workspace (intentional exception to the lightweight stack rule)
+
+The HTML / CSS / JavaScript labs at `/dashboard/student/skill-labs/{html,css,javascript}` use `@codesandbox/sandpack-react` for syntax highlighting + virtual filesystem, and `lucide-react` for the workspace toolbar icons. Both are accepted exceptions to the "no new deps" rule and are scoped to `src/features/dashboard/labs/workspace/`. Do not pull them into other parts of the app.
+
+- Sandpack is configured with `template="static"`, `autorun: false`, `skipEval: true`. We use Sandpack for the **editor**; the **preview** is still our own sandboxed iframe built by `srcDocBuilders.buildStaticDocumentFromFiles`.
+- The **React lab** at `/dashboard/student/skill-labs/react` does NOT use Sandpack. It runs `ReactIframeWorkspace` which loads React + `@babel/standalone` from unpkg inside a sandboxed iframe. Do not migrate it to Sandpack — that would import their bundler runtime, which is exactly the "heavy IDE infrastructure" the original brief forbids.
+- Workspace files live under `features/dashboard/labs/workspace/` and stay under 500 lines each. The public entry is the tiny `widgets/PracticeEditor.jsx` router — keep that thin.
 
 ## Change checklist
 

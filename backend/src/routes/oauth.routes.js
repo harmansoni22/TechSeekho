@@ -9,12 +9,14 @@ const router = Router();
 
 // OAuth login is unauthenticated and triggers outbound Google/GitHub calls.
 // Without a limiter, an attacker can grind through provider verification at
-// the provider's expense and ours. Use the same budget as credentials auth.
+// the provider's expense and ours. Use the same budget as credentials auth
+// and fail closed when Redis is configured (see auth.routes.js for rationale).
 const oauthLimiter = rateLimit({
 	windowMs: 60_000,
 	max: env.authRateLimitMax,
 	keyPrefix: "oauth",
 	message: "Too many OAuth attempts. Please try again shortly.",
+	failClosed: true,
 });
 
 router.post(

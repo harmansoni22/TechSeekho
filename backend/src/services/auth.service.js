@@ -54,7 +54,9 @@ function assertPasswordStrength(password) {
 function getContact({ email, phone, identifier }) {
 	const raw = identifier ?? null;
 	const emailValue = normalizeEmail(email || (raw?.includes("@") ? raw : null));
-	const phoneValue = normalizePhone(phone || (raw && !raw.includes("@") ? raw : null));
+	const phoneValue = normalizePhone(
+		phone || (raw && !raw.includes("@") ? raw : null),
+	);
 
 	if (emailValue) {
 		return { contactType: CONTACT_TYPES.EMAIL, contactValue: emailValue };

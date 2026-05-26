@@ -77,29 +77,29 @@ const WhyChooseUs = () => {
                   					sm:p-8
                 				"
                         >
-                                <GradientText
-                                    colors={["#7de3ff", "#ffffff", "#7de3ff"]}
-                                    z={0}
-                                    animationSpeed={8}
-                                    showBorder={false}
-                                    direction="horizontal"
-                                    className="font-bold text-md"
-                                    fontSize="clamp(1.1rem,4vw,1.55rem)"
-                                    pauseOnHover={false}
-                                >
-                                    {data.heading}
-                                </GradientText>
+                            <GradientText
+                                colors={["#7de3ff", "#ffffff", "#7de3ff"]}
+                                z={0}
+                                animationSpeed={8}
+                                showBorder={false}
+                                direction="horizontal"
+                                className="font-bold text-md"
+                                fontSize="clamp(1.1rem,4vw,1.55rem)"
+                                pauseOnHover={false}
+                            >
+                                {data.heading}
+                            </GradientText>
 
-                                <p
-                                    className="
+                            <p
+                                className="
                                         text-sm
                                         text-justify
                                         text-white/90
                                         sm:text-base
                                     "
-                                >
-                                    {data.content}
-                                </p>
+                            >
+                                {data.content}
+                            </p>
                         </BorderGlow>
                     );
                 })}

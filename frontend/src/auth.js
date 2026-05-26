@@ -6,27 +6,26 @@ import Google from "next-auth/providers/google";
 const backendUrl = process.env.NEXT_PUBLIC_BACKEND;
 
 async function authenticateWithBackend({ identifier, password, otp }) {
-	// Must exist in-module: used by the Credentials provider authorize().
-	try {
-		const response = await fetch(`${backendUrl}/auth/login/verify-otp`, {
-			method: "POST",
-			headers: {
-				"Content-Type": "application/json",
-			},
-			body: JSON.stringify({ identifier, password, otp }),
-		});
+    // Must exist in-module: used by the Credentials provider authorize().
+    try {
+        const response = await fetch(`${backendUrl}/auth/login/verify-otp`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ identifier, password, otp }),
+        });
 
-		if (!response.ok) {
-			throw new Error("Invalid credentials");
-		}
+        if (!response.ok) {
+            throw new Error("Invalid credentials");
+        }
 
-		return await response.json();
-	} catch (error) {
-		console.error("Backend authentication error:", error);
-		throw error;
-	}
+        return await response.json();
+    } catch (error) {
+        console.error("Backend authentication error:", error);
+        throw error;
+    }
 }
-
 
 async function getUserFromBackend(token) {
     try {
@@ -81,6 +80,14 @@ async function exchangeOAuthWithBackend({
     return response.json();
 }
 
+// Per-subdomain deploys (student.techseekho.com, trainer.techseekho.com, …)
+// share a single session by scoping the NextAuth cookie to the parent domain.
+// Leave NEXTAUTH_COOKIE_DOMAIN unset for single-host deployments — NextAuth
+// will fall back to its default (host-only) cookie scope.
+const cookieDomain = process.env.NEXTAUTH_COOKIE_DOMAIN || undefined;
+const isSecureCookies = process.env.NODE_ENV === "production";
+const cookiePrefix = isSecureCookies ? "__Secure-" : "";
+
 const authOptions = {
     secret: process.env.NEXTAUTH_SECRET,
     session: { strategy: "jwt" },
@@ -88,6 +95,40 @@ const authOptions = {
         signIn: "/login",
         error: "/login",
     },
+    cookies: cookieDomain
+        ? {
+              sessionToken: {
+                  name: `${cookiePrefix}next-auth.session-token`,
+                  options: {
+                      httpOnly: true,
+                      sameSite: "lax",
+                      path: "/",
+                      secure: isSecureCookies,
+                      domain: cookieDomain,
+                  },
+              },
+              callbackUrl: {
+                  name: `${cookiePrefix}next-auth.callback-url`,
+                  options: {
+                      sameSite: "lax",
+                      path: "/",
+                      secure: isSecureCookies,
+                      domain: cookieDomain,
+                  },
+              },
+              csrfToken: {
+                  // CSRF cookie remains host-scoped intentionally; sharing it
+                  // across subdomains weakens NextAuth's double-submit defense.
+                  name: `${isSecureCookies ? "__Host-" : ""}next-auth.csrf-token`,
+                  options: {
+                      httpOnly: true,
+                      sameSite: "lax",
+                      path: "/",
+                      secure: isSecureCookies,
+                  },
+              },
+          }
+        : undefined,
     providers: [
         Credentials({
             name: "credentials",
@@ -100,7 +141,9 @@ const authOptions = {
             async authorize(credentials) {
                 try {
                     if (credentials.postSignupToken) {
-                        const profileUser = await getUserFromBackend(credentials.postSignupToken);
+                        const profileUser = await getUserFromBackend(
+                            credentials.postSignupToken,
+                        );
                         return {
                             ...profileUser,
                             name: profileUser.name || profileUser.fullName,
@@ -153,9 +196,11 @@ const authOptions = {
                     token.providerAccountId = account.providerAccountId;
                     token.idToken = account.id_token || null;
 
-                    const fullName = profile?.name || profile?.login || user.name;
+                    const fullName =
+                        profile?.name || profile?.login || user.name;
                     const email = profile?.email || user.email;
-                    const avatarUrl = profile?.image || profile?.avatar_url || user.image;
+                    const avatarUrl =
+                        profile?.image || profile?.avatar_url || user.image;
 
                     const backendExchange = await exchangeOAuthWithBackend({
                         provider: account.provider,
@@ -168,7 +213,9 @@ const authOptions = {
                     });
 
                     if (!backendExchange?.token || !backendExchange?.user?.id) {
-                        throw new Error("Backend OAuth exchange did not return token/user");
+                        throw new Error(
+                            "Backend OAuth exchange did not return token/user",
+                        );
                     }
 
                     token.accessToken = backendExchange.token;
@@ -221,17 +268,22 @@ const authOptions = {
                 token.id
             ) {
                 try {
-                    const backendUser = await getUserFromBackend(token.accessToken);
+                    const backendUser = await getUserFromBackend(
+                        token.accessToken,
+                    );
                     const freshRoles = backendUser?.roles;
                     if (Array.isArray(freshRoles) && freshRoles.length > 0) {
                         session.user.roles = freshRoles;
                         token.roles = freshRoles;
-                    } else if (Array.isArray(freshRoles) && freshRoles.length === 0) {
+                    } else if (
+                        Array.isArray(freshRoles) &&
+                        freshRoles.length === 0
+                    ) {
                         // Backend returned empty roles. Keep JWT roles to avoid wiping
                         // valid credentials due to a transient data inconsistency.
                         console.warn(
                             "[auth] Backend returned empty roles for authenticated user; " +
-                            "falling back to JWT roles:",
+                                "falling back to JWT roles:",
                             token.roles,
                         );
                     }

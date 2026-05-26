@@ -1,185 +1,205 @@
 "use client";
 
-import Card from "@/app/components/ui/Card";
+import Link from "next/link";
+import { useEffect, useMemo, useState } from "react";
+import {
+    fetchLearningPaths,
+    fetchStudentCourses,
+} from "@/features/dashboard/api/studentDashboard.api";
 import TopBar from "@/features/dashboard/components/ui/layout/TopBar/TopBar";
+import {
+    PageEmpty,
+    PageError,
+    PageLoading,
+} from "@/features/dashboard/components/ui/widgets/PageState.jsx";
+import Panel from "@/features/dashboard/components/ui/widgets/Panel.jsx";
 
-const LearningPage = () => {
-  const currentLesson = {
-    title: "Introduction to React Hooks",
-    course: "Full Stack Web Development",
-    progress: 65,
-    totalLessons: 42,
-    currentLessonNumber: 27,
-    estimatedTime: "15 min",
-    nextLesson: "useEffect Hook Deep Dive",
-  };
+/**
+ * Active Learning — lists every LearningPath the student can access, with the
+ * enrollment badge on paths they've already joined. Two parallel fetches
+ * because the backend keeps the catalog separate from "my enrollments":
+ *
+ *   GET /modules          → catalog
+ *   GET /student/courses  → my enrollments + per-module progress
+ */
+const ActiveLearningPage = () => {
+    const [paths, setPaths] = useState(null);
+    const [enrollments, setEnrollments] = useState(null);
+    const [error, setError] = useState(null);
+    const [reloadKey, setReloadKey] = useState(0);
 
-  const notes = [
-    "Hooks allow function components to have state and lifecycle features",
-    "useState returns a stateful value and a function to update it",
-    "useEffect handles side effects in function components",
-    "Custom hooks can be created for reusable logic",
-  ];
+    // biome-ignore lint/correctness/useExhaustiveDependencies: reloadKey is the explicit re-fetch trigger — bumping it must re-run the effect.
+    useEffect(() => {
+        let cancelled = false;
+        setError(null);
+        setPaths(null);
+        setEnrollments(null);
+        Promise.all([fetchLearningPaths(), fetchStudentCourses()])
+            .then(([pathsRes, coursesRes]) => {
+                if (cancelled) return;
+                setPaths(Array.isArray(pathsRes) ? pathsRes : []);
+                setEnrollments(Array.isArray(coursesRes) ? coursesRes : []);
+            })
+            .catch((err) => {
+                if (cancelled) return;
+                setError(err?.message ?? "Could not load learning paths");
+            });
+        return () => {
+            cancelled = true;
+        };
+    }, [reloadKey]);
 
-  const curriculum = [
-    { id: 1, title: "JavaScript Fundamentals", completed: true, lessons: 10 },
-    { id: 2, title: "React Basics", completed: true, lessons: 8 },
-    { id: 3, title: "React Hooks", completed: false, lessons: 12, current: true },
-    { id: 4, title: "Advanced Patterns", completed: false, lessons: 12 },
-  ];
+    const enrolledByPathId = useMemo(() => {
+        const map = new Map();
+        for (const e of enrollments ?? []) map.set(e.pathId, e);
+        return map;
+    }, [enrollments]);
 
-  return (
-    <div className="space-y-5" style={{ color: "var(--dashboard-fg)" }}>
-      <TopBar
-        title="Active Learning View"
-        subtitle="Focus-optimized lesson player with integrated note-taking and curriculum tracking"
-      />
+    const loading = paths === null || enrollments === null;
 
-      <div className="grid gap-5 lg:grid-cols-3">
-        {/* Main Lesson Player */}
-        <div className="lg:col-span-2 space-y-5">
-          <Card
-            className="border"
-            style={{
-              borderColor: "var(--dashboard-border)",
-              backgroundColor: "var(--dashboard-surface)",
-            }}
-          >
-            <div className="aspect-video bg-gray-200 rounded-lg flex items-center justify-center mb-4">
-              <p className="text-gray-500">Video Player Placeholder</p>
-            </div>
-            <h2 className="text-2xl font-semibold" style={{ color: "var(--dashboard-fg)" }}>
-              {currentLesson.title}
-            </h2>
-            <p className="text-sm mt-1" style={{ color: "var(--dashboard-muted)" }}>
-              {currentLesson.course} • Lesson {currentLesson.currentLessonNumber} of {currentLesson.totalLessons}
-            </p>
-            <div className="mt-4 flex items-center justify-between">
-              <div className="flex items-center space-x-4">
-                <button
-                  className="px-4 py-2 rounded-md text-sm font-medium"
-                  style={{
-                    backgroundColor: "var(--dashboard-primary)",
-                    color: "var(--dashboard-primary-fg)",
-                  }}
+    return (
+        <div className="space-y-5" style={{ color: "var(--dashboard-fg)" }}>
+            <TopBar
+                title="Active Learning"
+                subtitle="Browse learning paths and continue where you left off"
+            />
+
+            {error ? (
+                <PageError
+                    title="Could not load learning paths"
+                    message={error}
+                    onRetry={() => setReloadKey((k) => k + 1)}
+                />
+            ) : loading ? (
+                <PageLoading label="Loading paths" />
+            ) : paths.length === 0 ? (
+                <PageEmpty
+                    title="No learning paths are available yet"
+                    description="Your trainer or coordinator hasn't published a path for your institution. Check back later or ask them directly."
+                />
+            ) : (
+                <Panel
+                    eyebrow="Catalog"
+                    title="Learning paths"
+                    description={`${paths.length} path${paths.length === 1 ? "" : "s"} available for your institution`}
                 >
-                  Previous
-                </button>
-                <button
-                  className="px-4 py-2 rounded-md text-sm font-medium"
-                  style={{
-                    backgroundColor: "var(--dashboard-accent)",
-                    color: "white",
-                  }}
-                >
-                  Next: {currentLesson.nextLesson}
-                </button>
-              </div>
-              <span className="text-sm" style={{ color: "var(--dashboard-muted)" }}>
-                {currentLesson.estimatedTime} remaining
-              </span>
-            </div>
-            <div className="mt-4">
-              <div className="flex justify-between text-sm mb-2">
-                <span style={{ color: "var(--dashboard-muted)" }}>Progress</span>
-                <span style={{ color: "var(--dashboard-fg)" }}>{currentLesson.progress}%</span>
-              </div>
-              <div className="w-full bg-gray-200 rounded-full h-2">
-                <div
-                  className="h-2 rounded-full"
-                  style={{
-                    width: `${currentLesson.progress}%`,
-                    backgroundColor: "var(--dashboard-primary)",
-                  }}
-                ></div>
-              </div>
-            </div>
-          </Card>
-
-          {/* Notes Section */}
-          <Card
-            className="border"
-            style={{
-              borderColor: "var(--dashboard-border)",
-              backgroundColor: "var(--dashboard-surface)",
-            }}
-          >
-            <h3 className="text-lg font-semibold mb-4" style={{ color: "var(--dashboard-fg)" }}>
-              My Notes
-            </h3>
-            <ul className="space-y-2">
-              {notes.map((note, index) => (
-                <li
-                  key={index}
-                  className="text-sm p-3 rounded-lg border"
-                  style={{
-                    borderColor: "var(--dashboard-border)",
-                    backgroundColor: "color-mix(in srgb, var(--dashboard-surface) 95%, var(--dashboard-primary) 5%)",
-                    color: "var(--dashboard-fg)",
-                  }}
-                >
-                  {note}
-                </li>
-              ))}
-            </ul>
-            <textarea
-              placeholder="Add a new note..."
-              className="w-full mt-4 p-3 rounded-lg border resize-none"
-              rows={3}
-              style={{
-                borderColor: "var(--dashboard-border)",
-                backgroundColor: "var(--dashboard-surface)",
-                color: "var(--dashboard-fg)",
-              }}
-            ></textarea>
-          </Card>
+                    <ul className="grid gap-3 md:grid-cols-2">
+                        {paths.map((path) => {
+                            const enrollment = enrolledByPathId.get(path.id);
+                            return (
+                                <li key={path.id}>
+                                    <PathCard
+                                        path={path}
+                                        enrollment={enrollment}
+                                    />
+                                </li>
+                            );
+                        })}
+                    </ul>
+                </Panel>
+            )}
         </div>
-
-        {/* Curriculum Sidebar */}
-        <div>
-          <Card
-            className="border"
-            style={{
-              borderColor: "var(--dashboard-border)",
-              backgroundColor: "var(--dashboard-surface)",
-            }}
-          >
-            <h3 className="text-lg font-semibold mb-4" style={{ color: "var(--dashboard-fg)" }}>
-              Course Curriculum
-            </h3>
-            <div className="space-y-3">
-              {curriculum.map((section) => (
-                <div
-                  key={section.id}
-                  className={`p-3 rounded-lg border ${
-                    section.current ? 'ring-2' : ''
-                  }`}
-                  style={{
-                    borderColor: section.current ? "var(--dashboard-primary)" : "var(--dashboard-border)",
-                    backgroundColor: section.completed
-                      ? "color-mix(in srgb, var(--dashboard-surface) 90%, var(--dashboard-accent) 10%)"
-                      : "var(--dashboard-surface)",
-                  }}
-                >
-                  <div className="flex items-center justify-between">
-                    <h4 className="font-medium" style={{ color: "var(--dashboard-fg)" }}>
-                      {section.title}
-                    </h4>
-                    {section.completed && (
-                      <span className="text-green-500">✓</span>
-                    )}
-                  </div>
-                  <p className="text-sm mt-1" style={{ color: "var(--dashboard-muted)" }}>
-                    {section.lessons} lessons
-                  </p>
-                </div>
-              ))}
-            </div>
-          </Card>
-        </div>
-      </div>
-    </div>
-  );
+    );
 };
 
-export default LearningPage;
+const PathCard = ({ path, enrollment }) => {
+    const isEnrolled = Boolean(enrollment);
+    const progress = enrollment?.progress ?? 0;
+    const moduleCount = path.modules?.length ?? 0;
+    const completedCount = (enrollment?.modules ?? []).filter(
+        (m) => (m.progress ?? 0) >= 100,
+    ).length;
+
+    return (
+        <Link
+            href={`/dashboard/student/learning/${path.id}`}
+            className="group block cursor-pointer rounded-lg border p-4 transition hover:opacity-95 focus:outline-none focus:ring-2"
+            style={{
+                borderColor: "var(--dashboard-border)",
+                backgroundColor: "var(--dashboard-surface)",
+            }}
+        >
+            <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                    <p
+                        className="cursor-default text-[10px] uppercase tracking-[0.2em]"
+                        style={{ color: "var(--dashboard-muted)" }}
+                    >
+                        {path.course?.title ?? "Course"}
+                    </p>
+                    <h3
+                        className="mt-1 font-display text-lg"
+                        style={{ color: "var(--dashboard-fg)" }}
+                    >
+                        {path.title}
+                    </h3>
+                    {path.description ? (
+                        <p
+                            className="mt-1 line-clamp-2 text-sm"
+                            style={{ color: "var(--dashboard-muted)" }}
+                        >
+                            {path.description}
+                        </p>
+                    ) : null}
+                </div>
+                <span
+                    className="cursor-default whitespace-nowrap rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide"
+                    style={{
+                        backgroundColor: isEnrolled
+                            ? "var(--role-accent-soft)"
+                            : "var(--dashboard-border)",
+                        color: isEnrolled
+                            ? "var(--role-accent)"
+                            : "var(--dashboard-muted)",
+                    }}
+                >
+                    {isEnrolled ? "Enrolled" : "Not enrolled"}
+                </span>
+            </div>
+
+            <div className="mt-4 flex items-center gap-3">
+                <div
+                    className="progress-track h-1.5 flex-1 overflow-hidden rounded-full"
+                    aria-hidden="true"
+                >
+                    <div
+                        className="h-full rounded-full transition-all"
+                        style={{
+                            width: `${Math.max(0, Math.min(100, progress))}%`,
+                            backgroundColor: "var(--role-accent)",
+                        }}
+                    />
+                </div>
+                <span
+                    className="cursor-default text-xs"
+                    style={{ color: "var(--dashboard-muted)" }}
+                >
+                    {isEnrolled
+                        ? `${Math.round(progress)}%`
+                        : `${moduleCount} module${moduleCount === 1 ? "" : "s"}`}
+                </span>
+            </div>
+
+            <div
+                className="mt-3 flex items-center justify-between text-xs"
+                style={{ color: "var(--dashboard-muted)" }}
+            >
+                <span className="cursor-default">
+                    {isEnrolled
+                        ? `${completedCount}/${moduleCount} module${moduleCount === 1 ? "" : "s"} done`
+                        : path.estimatedHours
+                          ? `${path.estimatedHours}h estimated`
+                          : ""}
+                </span>
+                <span
+                    className="font-semibold transition group-hover:translate-x-0.5"
+                    style={{ color: "var(--role-accent)" }}
+                >
+                    {isEnrolled ? "Continue →" : "View →"}
+                </span>
+            </div>
+        </Link>
+    );
+};
+
+export default ActiveLearningPage;

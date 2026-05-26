@@ -5,7 +5,7 @@
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { signIn, getSession } from "next-auth/react";
+import { getSession, signIn } from "next-auth/react";
 import { useState } from "react";
 import SocialLoginButtons from "@/app/login/components/SocialLoginButtons";
 import { api } from "@/lib/api";
@@ -77,7 +77,9 @@ const LoginForm = () => {
 
             if (!roleDestination && roles.length === 0) {
                 // Session not yet populated — fall through to /dashboard which will re-resolve.
-                console.warn("[LoginForm] Session roles empty after signIn, falling back to /dashboard");
+                console.warn(
+                    "[LoginForm] Session roles empty after signIn, falling back to /dashboard",
+                );
             }
 
             router.push(next || roleDestination || "/dashboard");
@@ -168,7 +170,13 @@ const LoginForm = () => {
                                 strokeLinecap="round"
                                 strokeLinejoin="round"
                             >
-                                <rect x="2" y="4" width="20" height="16" rx="2" />
+                                <rect
+                                    x="2"
+                                    y="4"
+                                    width="20"
+                                    height="16"
+                                    rx="2"
+                                />
                                 <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
                             </svg>
                         </span>

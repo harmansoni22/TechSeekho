@@ -8,11 +8,11 @@
 
 /** @type {Record<string, string>} */
 export const ROLE_ROUTES = {
-	SUPER_ADMIN: "/dashboard/super-admin",
-	ADMIN: "/dashboard/admin",
-	INSTITUTION_COORDINATOR: "/dashboard/coordinator",
-	TRAINER: "/dashboard/trainer",
-	STUDENT: "/dashboard/student",
+    SUPER_ADMIN: "/dashboard/super-admin",
+    ADMIN: "/dashboard/admin",
+    INSTITUTION_COORDINATOR: "/dashboard/coordinator",
+    TRAINER: "/dashboard/trainer",
+    STUDENT: "/dashboard/student",
 };
 
 /**
@@ -21,11 +21,11 @@ export const ROLE_ROUTES = {
  * gets sent to the student dashboard.
  */
 const ROLE_PRIORITY = [
-	"SUPER_ADMIN",
-	"ADMIN",
-	"INSTITUTION_COORDINATOR",
-	"TRAINER",
-	"STUDENT",
+    "SUPER_ADMIN",
+    "ADMIN",
+    "INSTITUTION_COORDINATOR",
+    "TRAINER",
+    "STUDENT",
 ];
 
 /**
@@ -37,22 +37,24 @@ const ROLE_PRIORITY = [
  *                            Callers must handle null (unknown / unassigned role).
  */
 export function resolveRoleDestination(roles = []) {
-	const normalized = (roles || []).map((r) =>
-		String(r || "").trim().toUpperCase(),
-	);
+    const normalized = (roles || []).map((r) =>
+        String(r || "")
+            .trim()
+            .toUpperCase(),
+    );
 
-	for (const role of ROLE_PRIORITY) {
-		if (normalized.includes(role)) {
-			return ROLE_ROUTES[role];
-		}
-	}
+    for (const role of ROLE_PRIORITY) {
+        if (normalized.includes(role)) {
+            return ROLE_ROUTES[role];
+        }
+    }
 
-	if (normalized.length > 0) {
-		console.warn(
-			`[roleRouter] No dashboard route for roles: [${normalized.join(", ")}]. ` +
-				"Add the role to ROLE_ROUTES in src/lib/roleRouter.js.",
-		);
-	}
+    if (normalized.length > 0) {
+        console.warn(
+            `[roleRouter] No dashboard route for roles: [${normalized.join(", ")}]. ` +
+                "Add the role to ROLE_ROUTES in src/lib/roleRouter.js.",
+        );
+    }
 
-	return null;
+    return null;
 }
