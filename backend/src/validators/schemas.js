@@ -303,3 +303,238 @@ export const presignUploadSchema = z.object({
 	contentType: trimmedString(120),
 	sizeBytes: z.coerce.number().int().min(1),
 });
+
+// ---- ADMIN OPS — institution-scoped dashboard / onboarding ----
+
+const memberStatus = z.enum(["ACTIVE", "INACTIVE", "SUSPENDED"]);
+const onboardingRole = z.enum(["STUDENT", "TRAINER"]);
+
+export const adminOverviewQuerySchema = z.object({
+	institutionId: cuidLike.optional(),
+});
+
+export const adminAnalyticsQuerySchema = z.object({
+	range: z.enum(["7d", "30d", "90d"]).optional(),
+	institutionId: cuidLike.optional(),
+});
+
+export const institutionPeopleQuerySchema = z.object({
+	institutionId: cuidLike,
+	role: onboardingRole,
+	q: trimmedString(120).optional(),
+	status: memberStatus.optional(),
+	batchId: cuidLike.optional(),
+});
+
+// Admin-provisioned identity: at least one contact channel is required. We
+// don't reuse the public register schema because the admin sets identity for
+// someone else and a generated password is issued server-side.
+export const createStudentSchema = z
+	.object({
+		institutionId: cuidLike,
+		fullName: trimmedString(120),
+		email: z.string().email().max(255).optional().nullable(),
+		phone: z.string().min(8).max(20).optional().nullable(),
+		enrollmentNumber: optionalTrimmed(60),
+		batchId: cuidLike.optional().nullable(),
+	})
+	.refine((v) => Boolean(v.email) || Boolean(v.phone), {
+		message: "email or phone is required",
+	});
+
+export const bulkCreateStudentsSchema = z.object({
+	institutionId: cuidLike,
+	batchId: cuidLike.optional().nullable(),
+	students: z
+		.array(
+			z
+				.object({
+					fullName: trimmedString(120),
+					email: z.string().email().max(255).optional().nullable(),
+					phone: z.string().min(8).max(20).optional().nullable(),
+					enrollmentNumber: optionalTrimmed(60),
+					batchId: cuidLike.optional().nullable(),
+				})
+				.refine((v) => Boolean(v.email) || Boolean(v.phone), {
+					message: "each row needs an email or phone",
+				}),
+		)
+		.min(1)
+		.max(200),
+});
+
+export const createTrainerSchema = z
+	.object({
+		institutionId: cuidLike,
+		fullName: trimmedString(120),
+		email: z.string().email().max(255).optional().nullable(),
+		phone: z.string().min(8).max(20).optional().nullable(),
+		specialization: optionalTrimmed(120),
+		bio: optionalTrimmed(2_000),
+		experienceYears: z.coerce
+			.number()
+			.int()
+			.min(0)
+			.max(60)
+			.optional()
+			.nullable(),
+	})
+	.refine((v) => Boolean(v.email) || Boolean(v.phone), {
+		message: "email or phone is required",
+	});
+
+export const setMemberStatusSchema = z.object({
+	status: memberStatus,
+});
+
+// ---- SUPER ADMIN — ROLE ASSIGNMENTS / USERS ----
+
+const platformRole = z.enum([
+	"SUPER_ADMIN",
+	"ADMIN",
+	"INSTITUTION_COORDINATOR",
+	"TRAINER",
+	"STUDENT",
+]);
+
+const userStatus = z.enum(["ACTIVE", "INACTIVE", "SUSPENDED", "TERMINATED"]);
+
+// SUPER_ADMIN role assignments are global by convention (institutionId null);
+// every other role requires a target institution. The service re-enforces this
+// — the schema only checks shape.
+export const grantRoleAssignmentSchema = z
+	.object({
+		userId: cuidLike,
+		role: platformRole,
+		institutionId: cuidLike.nullable().optional(),
+	})
+	.refine((v) => v.role === "SUPER_ADMIN" || Boolean(v.institutionId), {
+		message: "institutionId is required for non-SUPER_ADMIN roles",
+	});
+
+export const updateUserStatusSchema = z.object({
+	status: userStatus,
+	reason: optionalTrimmed(1000),
+});
+
+// ---- SUPER ADMIN — AUDIT LOG QUERY ----
+
+export const auditLogQuerySchema = z.object({
+	actorId: cuidLike.optional(),
+	institutionId: cuidLike.optional(),
+	entityType: trimmedString(60).optional(),
+	action: trimmedString(120).optional(),
+	from: isoDate.optional(),
+	to: isoDate.optional(),
+	limit: z.coerce.number().int().min(1).max(200).optional(),
+	cursor: cuidLike.optional(),
+});
+
+// ---- SUPER ADMIN — ANALYTICS / ADMIN LISTING ----
+
+export const analyticsQuerySchema = z.object({
+	range: z.enum(["7d", "30d", "90d"]).optional(),
+});
+
+export const adminListingQuerySchema = z.object({
+	role: platformRole.optional(),
+	q: trimmedString(120).optional(),
+	limit: z.coerce.number().int().min(1).max(200).optional(),
+	page: z.coerce.number().int().min(1).optional(),
+});
+
+// ---- SUPER ADMIN — GOVERNANCE (lifecycle, directory, termination) ----
+
+// Route params used by governance endpoints.
+export const idParamSchema = z.object({ id: cuidLike });
+export const userIdParamSchema = z.object({ userId: cuidLike });
+
+// Institution lifecycle is governance-only and reversible except for ARCHIVED,
+// which is the institution analogue of termination. PENDING_APPROVAL is owned by
+// the approval workflow, not this endpoint. A reason is mandatory so every
+// lifecycle move is reconstructable from the audit trail.
+const institutionLifecycleStatus = z.enum(["ACTIVE", "SUSPENDED", "ARCHIVED"]);
+
+export const institutionStatusSchema = z.object({
+	status: institutionLifecycleStatus,
+	reason: trimmedString(1000),
+});
+
+// Global directory spans every status including TERMINATED (read-only listing).
+const directoryStatus = z.enum([
+	"ACTIVE",
+	"INACTIVE",
+	"SUSPENDED",
+	"TERMINATED",
+]);
+
+export const userDirectoryQuerySchema = z.object({
+	role: platformRole.optional(),
+	status: directoryStatus.optional(),
+	institutionId: cuidLike.optional(),
+	q: trimmedString(120).optional(),
+	limit: z.coerce.number().int().min(1).max(200).optional(),
+	page: z.coerce.number().int().min(1).optional(),
+});
+
+export const createAdminSchema = z
+	.object({
+		fullName: trimmedString(120),
+		email: z.string().email().optional(),
+		phone: z.string().min(8).max(20).optional(),
+		institutionId: cuidLike,
+		designation: optionalTrimmed(120),
+		reason: optionalTrimmed(1000),
+	})
+	.refine((v) => Boolean(v.email) || Boolean(v.phone), {
+		message: "An email or phone is required",
+	});
+
+export const trainerDirectoryQuerySchema = z.object({
+	status: directoryStatus.optional(),
+	institutionId: cuidLike.optional(),
+	q: trimmedString(120).optional(),
+	limit: z.coerce.number().int().min(1).max(200).optional(),
+	page: z.coerce.number().int().min(1).optional(),
+});
+
+// Trainer status changes here are the reversible lifecycle moves only.
+// TERMINATED runs through the dedicated termination endpoint with batch
+// reassignment, never this one.
+const trainerLifecycleStatus = z.enum(["ACTIVE", "SUSPENDED", "INACTIVE"]);
+
+export const trainerStatusSchema = z.object({
+	status: trainerLifecycleStatus,
+	reason: trimmedString(1000),
+});
+
+// Admin termination must carry a transfer target for every institution the
+// admin would otherwise orphan. The service computes which institutions require
+// a transfer; the schema only checks shape.
+export const adminTerminationSchema = z.object({
+	reason: trimmedString(1000),
+	transfers: z
+		.array(
+			z.object({
+				institutionId: cuidLike,
+				toUserId: cuidLike,
+			}),
+		)
+		.optional()
+		.default([]),
+});
+
+// Trainer termination must carry a reassignment target for every batch the
+// trainer would otherwise orphan.
+export const trainerTerminationSchema = z.object({
+	reason: trimmedString(1000),
+	reassignments: z
+		.array(
+			z.object({
+				batchId: cuidLike,
+				toTrainerId: cuidLike,
+			}),
+		)
+		.optional()
+		.default([]),
+});
