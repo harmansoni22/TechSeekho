@@ -131,7 +131,7 @@ export async function createInstitution(user, payload) {
 		throw new AppError("Institution name and type are required", 400);
 	}
 
-	return prisma.institution.create({
+	const created = await prisma.institution.create({
 		data: {
 			name: payload.name,
 
@@ -150,6 +150,22 @@ export async function createInstitution(user, payload) {
 			isActive: payload.isActive ?? true,
 		},
 	});
+
+	audit({
+		actor: user,
+		action: "institution.create",
+		entityType: "Institution",
+		entityId: created.id,
+		institutionId: created.id,
+		metadata: {
+			name: created.name,
+			type: created.type,
+			city: created.city,
+			state: created.state,
+		},
+	});
+
+	return created;
 }
 
 export async function updateInstitution(user, id, payload) {
@@ -163,6 +179,7 @@ export async function updateInstitution(user, id, payload) {
 			city: true,
 			state: true,
 			isActive: true,
+			status: true,
 			contactEmail: true,
 			contactPhone: true,
 		},
@@ -171,6 +188,19 @@ export async function updateInstitution(user, id, payload) {
 	if (!before) {
 		throw new AppError("Institution not found", 404);
 	}
+
+	// Keep the governed `status` mirror in sync when the legacy isActive toggle
+	// is used. Full lifecycle transitions (ARCHIVED / PENDING_APPROVAL) come via
+	// the dedicated super-admin lifecycle endpoint in a later phase.
+	const isActiveChanging =
+		payload.isActive !== undefined && payload.isActive !== before.isActive;
+	const statusSync = isActiveChanging
+		? {
+				status: payload.isActive ? "ACTIVE" : "SUSPENDED",
+				statusChangedAt: new Date(),
+				statusChangedById: user.id,
+			}
+		: {};
 
 	const updated = await prisma.institution.update({
 		where: { id },
@@ -183,6 +213,7 @@ export async function updateInstitution(user, id, payload) {
 			contactEmail: payload.contactEmail,
 			contactPhone: payload.contactPhone,
 			isActive: payload.isActive,
+			...statusSync,
 		},
 	});
 
@@ -629,16 +660,25 @@ export async function assignStudentToBatch(user, batchId, studentId) {
 }
 
 export async function listAnnouncements(user, filters = {}) {
+	const where = {};
+
 	if (filters.batchId) {
+		// Explicit batch request: validate access, then scope to that batch.
 		await assertCanAccessBatch(user, filters.batchId);
+		where.batchId = filters.batchId;
+	} else if (!isSuperAdmin(user)) {
+		// No batch filter: scope to the caller's institutions so a non-super-admin
+		// never sees announcements from institutions they have no role in. Without
+		// this, the unfiltered list leaked every announcement on the platform.
+		const institutionIds = getAccessibleInstitutionIds(user);
+		if (institutionIds.length === 0) {
+			return [];
+		}
+		where.institutionId = { in: institutionIds };
 	}
 
 	return prisma.announcement.findMany({
-		where: filters.batchId
-			? {
-					batchId: filters.batchId,
-				}
-			: {},
+		where,
 
 		include: {
 			batch: {

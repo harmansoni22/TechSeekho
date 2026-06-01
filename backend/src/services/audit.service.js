@@ -54,6 +54,8 @@ function safeUserAgent(req) {
  * @param {string} params.entityType       e.g. "Attendance", "Submission"
  * @param {string|null} [params.entityId]  Affected primary key
  * @param {string|null} [params.institutionId]
+ * @param {string|null} [params.reason]    Operator-supplied justification for
+ *                                         governance/lifecycle actions
  * @param {object|null} [params.metadata]  Small sanitized snapshot
  * @param {object|null} [params.req]       Express request, used for IP/UA
  */
@@ -63,6 +65,7 @@ export async function audit({
 	entityType,
 	entityId = null,
 	institutionId = null,
+	reason = null,
 	metadata = null,
 	req = null,
 }) {
@@ -77,6 +80,7 @@ export async function audit({
 				entityType: String(entityType),
 				entityId,
 				institutionId,
+				reason: reason ? String(reason).slice(0, 1000) : null,
 				metadata: metadata ?? undefined,
 				ipAddress: clientIp(req),
 				userAgent: safeUserAgent(req),
