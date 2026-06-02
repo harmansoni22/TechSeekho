@@ -392,6 +392,11 @@ Quick reference. Source of truth is the per-feature route file.
 | AI                 | `POST /ai/chat`                                | STUDENT, TRAINER, ADMIN, SUPER_ADMIN                |
 | Users              | `GET /users`                                   | ADMIN, SUPER_ADMIN (auto institution-scoped)        |
 | Admin              | `GET /admin/platform/overview`                 | SUPER_ADMIN                                         |
+| Admin ops          | `GET /admin-ops/overview`, `/admin-ops/analytics` | ADMIN, SUPER_ADMIN (institution-scoped in service) |
+|                    | `GET /admin-ops/people?institutionId=&role=`   | ADMIN, SUPER_ADMIN (institution-scoped)             |
+|                    | `POST /admin-ops/students`, `/admin-ops/students/bulk` | ADMIN, SUPER_ADMIN (audited onboarding)      |
+|                    | `POST /admin-ops/trainers`                      | ADMIN, SUPER_ADMIN (audited onboarding)             |
+|                    | `PATCH /admin-ops/members/:userId/status`       | ADMIN, SUPER_ADMIN (student/trainer only, audited)  |
 | Institutions       | `GET /institutions`                            | ADMIN, COORDINATOR (own), SUPER_ADMIN               |
 |                    | `POST /institutions`                           | SUPER_ADMIN (service-enforced)                      |
 |                    | `PATCH /institutions/:id`                      | ADMIN, SUPER_ADMIN                                  |
@@ -401,7 +406,7 @@ Quick reference. Source of truth is the per-feature route file.
 |                    | `POST /batches/:id/{trainers,students}`        | ADMIN, SUPER_ADMIN                                  |
 |                    | `DELETE /batches/:id/{trainers,students}/...`  | ADMIN, SUPER_ADMIN                                  |
 | Institution members| `GET /institutions/:id/members`                | COORDINATOR, ADMIN, SUPER_ADMIN                     |
-| Announcements      | `GET /announcements`                           | STUDENT, TRAINER, COORDINATOR, ADMIN, SUPER_ADMIN   |
+| Announcements      | `GET /announcements`                           | STUDENT, TRAINER, COORDINATOR, ADMIN, SUPER_ADMIN (non-super-admins are institution-scoped when no `batchId` is given) |
 |                    | `POST /announcements`                          | TRAINER, ADMIN, SUPER_ADMIN                         |
 | Assignments        | `GET /assignments`, `/:id`                     | STUDENT, TRAINER, COORDINATOR, ADMIN, SUPER_ADMIN   |
 |                    | `POST /assignments`                            | TRAINER, ADMIN, SUPER_ADMIN                         |
