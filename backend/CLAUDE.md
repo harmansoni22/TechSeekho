@@ -112,7 +112,8 @@ Registered in `src/routes/index.js`:
 | `/health` | liveness |
 | `/auth` | register, OTP login, profile |
 | `/oauth` | Google/GitHub token verification and backend JWT issue |
-| `/admin` | admin/super-admin dashboard operations |
+| `/admin` | SUPER_ADMIN-only platform governance (overview, roles, audit, config) |
+| `/admin-ops` | institution-scoped ADMIN operations: dashboard overview/analytics, student & trainer onboarding (manual + bulk), institution rosters, member status |
 | `/courses` | course catalog and course detail |
 | `/assignments` | assignment create/list/submit/review |
 | `/assessments` | assessments and submissions |

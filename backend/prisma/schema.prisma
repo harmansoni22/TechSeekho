@@ -14,6 +14,18 @@ enum UserStatus {
   ACTIVE
   INACTIVE
   SUSPENDED
+  TERMINATED
+}
+
+// Governed lifecycle for an institution. Distinct from the legacy `isActive`
+// boolean, which is kept as a derived mirror (isActive == status == ACTIVE)
+// during the migration window so existing readers keep working. New code
+// should read `status`; `isActive` will be removed once all readers migrate.
+enum InstitutionStatus {
+  ACTIVE
+  SUSPENDED
+  ARCHIVED
+  PENDING_APPROVAL
 }
 
 enum InstitutionType {
@@ -84,6 +96,12 @@ model User {
   isPhoneVerified   Boolean  @default(false)
 
   status            UserStatus @default(ACTIVE)
+
+  // Lifecycle governance: why the status was last changed, when, and by whom.
+  // Populated by SUPER_ADMIN lifecycle actions (suspend/reactivate/terminate).
+  statusReason      String?
+  statusChangedAt   DateTime?
+  statusChangedById String?
 
   lastLoginAt       DateTime?
 
@@ -170,6 +188,16 @@ model Institution {
   contactEmail    String?
   contactPhone    String?
 
+  status          InstitutionStatus @default(ACTIVE)
+
+  // Lifecycle governance metadata for suspend / reactivate / archive actions.
+  statusReason      String?
+  statusChangedAt   DateTime?
+  statusChangedById String?
+
+  // Compatibility mirror of `status == ACTIVE`. Legacy readers still use this;
+  // lifecycle writes must keep it in sync. Remove once all readers move to
+  // `status`.
   isActive        Boolean @default(true)
 
   createdAt       DateTime @default(now())
@@ -721,6 +749,8 @@ model AuditLog {
   entityId       String?  // primary key of the affected row when known
 
   institutionId  String?  // tenant tag for scoped queries
+
+  reason         String?  // operator-supplied justification for governance/lifecycle actions
 
   metadata       Json?    // small, sanitized snapshot — never raw payloads
   ipAddress      String?

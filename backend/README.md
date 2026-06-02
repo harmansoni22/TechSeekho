@@ -173,13 +173,13 @@ Errors are wrapped with `AppError` where possible and returned through the share
 
 Read these in order:
 
-1. [src/server.js](/c:/Users/user/OneDrive/Desktop/My-Projects/TechSeekho/TechSeekhoApp/backend/src/server.js)
-2. [src/app.js](/c:/Users/user/OneDrive/Desktop/My-Projects/TechSeekho/TechSeekhoApp/backend/src/app.js)
-3. [src/routes/index.js](/c:/Users/user/OneDrive/Desktop/My-Projects/TechSeekho/TechSeekhoApp/backend/src/routes/index.js)
-4. [src/controllers/courses.controller.js](/c:/Users/user/OneDrive/Desktop/My-Projects/TechSeekho/TechSeekhoApp/backend/src/controllers/courses.controller.js)
-5. [src/services/courses.service.js](/c:/Users/user/OneDrive/Desktop/My-Projects/TechSeekho/TechSeekhoApp/backend/src/services/courses.service.js)
-6. [src/services/ai.service.js](/c:/Users/user/OneDrive/Desktop/My-Projects/TechSeekho/TechSeekhoApp/backend/src/services/ai.service.js)
-7. [prisma/schema.prisma](/c:/Users/user/OneDrive/Desktop/My-Projects/TechSeekho/TechSeekhoApp/backend/prisma/schema.prisma)
+1. [src/server.js](src/server.js)
+2. [src/app.js](src/app.js)
+3. [src/routes/index.js](src/routes/index.js)
+4. [src/controllers/courses.controller.js](src/controllers/courses.controller.js)
+5. [src/services/courses.service.js](src/services/courses.service.js)
+6. [src/services/ai.service.js](src/services/ai.service.js)
+7. [prisma/schema.prisma](prisma/schema.prisma)
 
 ## Current Gaps
 
