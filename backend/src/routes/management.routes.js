@@ -31,9 +31,14 @@ const router = Router();
 
 router.use(authenticate);
 
+// Coordinator is projection-only but institution-scoped: they may READ the
+// institutions they are assigned to. `listInstitutions` already filters to the
+// caller's accessible institution ids for non-super-admins (super admin sees
+// all), so adding the role here cannot leak another institution's data. Write
+// routes below remain ADMIN / SUPER_ADMIN only.
 router.get(
 	"/institutions",
-	requireRole("ADMIN", "SUPER_ADMIN"),
+	requireRole("INSTITUTION_COORDINATOR", "ADMIN", "SUPER_ADMIN"),
 	(req, res, next) => listInstitutionsController(req, res).catch(next),
 );
 router.post(

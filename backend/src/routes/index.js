@@ -1,5 +1,6 @@
 import { Router } from "express";
 import adminRoutes from "./admin.routes.js";
+import adminOpsRoutes from "./adminOps.routes.js";
 import aiRoutes from "./ai.routes.js";
 import assessmentsRoutes from "./assessments.routes.js";
 import assignmentsRoutes from "./assignments.routes.js";
@@ -12,6 +13,7 @@ import modulesRoutes from "./modules.routes.js";
 import oauthRoutes from "./oauth.routes.js";
 import productsRoutes from "./products.routes.js";
 import studentRoutes from "./student.routes.js";
+import trainerRoutes from "./trainer.routes.js";
 import uploadsRoutes from "./uploads.routes.js";
 import usersRoutes from "./users.routes.js";
 
@@ -20,6 +22,7 @@ const router = Router();
 router.use("/health", healthRoutes);
 router.use("/auth", authRoutes);
 router.use("/admin", adminRoutes);
+router.use("/admin-ops", adminOpsRoutes);
 router.use("/oauth", oauthRoutes);
 router.use("/courses", coursesRoutes);
 router.use("/assignments", assignmentsRoutes);
@@ -30,6 +33,7 @@ router.use("/", managementRoutes);
 router.use("/products", productsRoutes);
 router.use("/ai", aiRoutes);
 router.use("/student", studentRoutes);
+router.use("/trainer", trainerRoutes);
 router.use("/uploads", uploadsRoutes);
 router.use("/users", usersRoutes);
 
