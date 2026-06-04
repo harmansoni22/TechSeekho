@@ -6,10 +6,12 @@ import {
     useSandpack,
 } from "@codesandbox/sandpack-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { getLibraries } from "@/features/dashboard/labs/labConfigs";
 import ConsolePanel from "./ConsolePanel.jsx";
 import EditorTabs from "./EditorTabs.jsx";
 import { useNarrowWorkspace } from "./hooks/useNarrowWorkspace.js";
 import { useResizeDrag } from "./hooks/useResizeDrag.js";
+import LibrariesPicker from "./LibrariesPicker.jsx";
 import PreviewPanel from "./PreviewPanel.jsx";
 import ResizeHandle from "./ResizeHandle.jsx";
 import { buildStaticDocumentFromFiles } from "./srcDocBuilders.js";
@@ -66,6 +68,9 @@ const WebSandpackWorkspace = ({
     const [layout, setLayout] = useState(DEFAULT_LAYOUT);
     const [explorerCollapsed, setExplorerCollapsed] = useState(false);
     const [consoleOpen, setConsoleOpen] = useState(true);
+    // CDN libraries enabled for this exercise (e.g. ["bootstrap", "jquery"]).
+    // Persisted in the save snapshot.
+    const [libraries, setLibraries] = useState([]);
     // Remounts SandpackProvider when we hard-reset or reload from storage —
     // simpler than trying to mutate Sandpack's internal state externally.
     const [instanceKey, setInstanceKey] = useState(0);
@@ -100,6 +105,9 @@ const WebSandpackWorkspace = ({
         setActiveFile(nextActive);
         setSavedAt(snapshot.savedAt ?? null);
         setSavedSignature(stableSignature(nextProject));
+        setLibraries(
+            Array.isArray(snapshot.libraries) ? snapshot.libraries : [],
+        );
         setInstanceKey((value) => value + 1);
         return true;
     }, []);
@@ -117,6 +125,7 @@ const WebSandpackWorkspace = ({
             setActiveFile("/index.html");
             setSavedAt(null);
             setSavedSignature(stableSignature(initialProject));
+            setLibraries([]);
             setStatus("");
             setInstanceKey((value) => value + 1);
         }
@@ -183,6 +192,7 @@ const WebSandpackWorkspace = ({
             const payload = {
                 code: { files: snapshot.files },
                 activeFile: snapshot.activeFile,
+                libraries,
                 layout,
                 savedAt: Date.now(),
             };
@@ -205,13 +215,14 @@ const WebSandpackWorkspace = ({
                 setStatus("Save is unavailable in this browser session.");
             }
         },
-        [storageKey, saveProject, layout, onSave],
+        [storageKey, saveProject, libraries, layout, onSave],
     );
 
     const handleReset = useCallback(() => {
         setProject(initialProject);
         setActiveFile("/index.html");
         setSavedSignature(stableSignature(initialProject));
+        setLibraries([]);
         setStatus("Starter workspace restored.");
         setInstanceKey((value) => value + 1);
     }, [initialProject]);
@@ -256,6 +267,14 @@ const WebSandpackWorkspace = ({
                 onReset={handleReset}
                 onLoad={handleLoad}
                 onSave={handleSave}
+                libraries={libraries}
+                onLibraryToggle={(id) =>
+                    setLibraries((current) =>
+                        current.includes(id)
+                            ? current.filter((value) => value !== id)
+                            : [...current, id],
+                    )
+                }
             />
         </SandpackProvider>
     );
@@ -279,6 +298,8 @@ const WebSandpackShell = ({
     onReset,
     onLoad,
     onSave,
+    libraries,
+    onLibraryToggle,
 }) => {
     const { sandpack } = useSandpack();
     const isNarrow = useNarrowWorkspace();
@@ -296,9 +317,13 @@ const WebSandpackShell = ({
         () => toSerializableSandpackFiles(files),
         [files],
     );
+    const resolvedLibraries = useMemo(
+        () => getLibraries(libraries ?? []),
+        [libraries],
+    );
     const srcDoc = useMemo(
-        () => buildStaticDocumentFromFiles(currentFiles),
-        [currentFiles],
+        () => buildStaticDocumentFromFiles(currentFiles, resolvedLibraries),
+        [currentFiles, resolvedLibraries],
     );
     const editorHasUnsavedChanges =
         hasUnsavedChanges || sandpack.editorState === "dirty";
@@ -315,7 +340,10 @@ const WebSandpackShell = ({
     }, [onSave, currentFiles, activeFile]);
 
     const openPreviewInNewTab = useCallback(() => {
-        const doc = buildStaticDocumentFromFiles(currentFiles);
+        const doc = buildStaticDocumentFromFiles(
+            currentFiles,
+            resolvedLibraries,
+        );
         const blob = new Blob([doc], { type: "text/html" });
         const url = URL.createObjectURL(blob);
         const win = window.open(url, "_blank", "noopener,noreferrer");
@@ -325,7 +353,7 @@ const WebSandpackShell = ({
             const dataUrl = `data:text/html;charset=utf-8,${encodeURIComponent(doc)}`;
             window.open(dataUrl, "_blank", "noopener,noreferrer");
         }
-    }, [currentFiles]);
+    }, [currentFiles, resolvedLibraries]);
 
     const refreshPreview = useCallback(() => {
         setPreviewVersion((value) => value + 1);
@@ -396,6 +424,12 @@ const WebSandpackShell = ({
                 onSave={saveSnapshot}
                 onConsoleToggle={onConsoleToggle}
                 consoleOpen={consoleOpen}
+                extras={
+                    <LibrariesPicker
+                        selectedIds={libraries ?? []}
+                        onToggle={onLibraryToggle}
+                    />
+                }
             />
 
             <div
@@ -466,7 +500,11 @@ const WebSandpackShell = ({
                 )}
 
                 <PreviewPanel
-                    key={previewVersion}
+                    // Remount on library toggle. Some browsers don't reload
+                    // an iframe reliably when only the `srcdoc` attribute is
+                    // updated in place — forcing a fresh mount guarantees
+                    // CDN tags actually get fetched.
+                    key={`${previewVersion}:${(libraries ?? []).join(",")}`}
                     srcDoc={srcDoc}
                     url="preview://web-project"
                     onRefresh={refreshPreview}

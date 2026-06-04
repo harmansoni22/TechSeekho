@@ -1,3 +1,6 @@
+const skeletonKeys = (count, prefix) =>
+    Array.from({ length: count }, (_, i) => `${prefix}-${i}`);
+
 const SkeletonBlock = ({ className = "" }) => (
     <div
         className={`animate-pulse rounded-md ${className}`}
@@ -48,9 +51,9 @@ const SidebarSkeleton = () => (
             <SkeletonBlock className="h-7 w-32" />
         </div>
         <div className="flex flex-wrap gap-2 md:flex-col">
-            {Array.from({ length: 6 }).map((_, index) => (
+            {skeletonKeys(6, "sidebar-link").map((key) => (
                 <SkeletonBlock
-                    key={index}
+                    key={key}
                     className="h-9 w-28 rounded-sm md:w-full"
                 />
             ))}
@@ -63,8 +66,8 @@ const DashboardOverviewSkeleton = () => (
         <TopBarSkeleton />
 
         <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            {Array.from({ length: 4 }).map((_, index) => (
-                <SkeletonCard key={index}>
+            {skeletonKeys(4, "overview-kpi").map((key) => (
+                <SkeletonCard key={key}>
                     <SkeletonBlock className="h-4 w-24" />
                     <SkeletonBlock className="mt-3 h-8 w-20" />
                     <SkeletonBlock className="mt-2 h-3 w-16" />
@@ -73,13 +76,13 @@ const DashboardOverviewSkeleton = () => (
         </section>
 
         <section className="grid gap-4 lg:grid-cols-2">
-            {Array.from({ length: 2 }).map((_, cardIndex) => (
-                <SkeletonCard key={cardIndex}>
+            {skeletonKeys(2, "overview-panel").map((key) => (
+                <SkeletonCard key={key}>
                     <SkeletonBlock className="h-6 w-44" />
                     <div className="mt-4 space-y-3">
-                        {Array.from({ length: 4 }).map((_, rowIndex) => (
+                        {skeletonKeys(4, `${key}-row`).map((rowKey) => (
                             <SkeletonBlock
-                                key={rowIndex}
+                                key={rowKey}
                                 className="h-14 w-full rounded-lg"
                             />
                         ))}
@@ -97,8 +100,8 @@ const AnalyticsSkeleton = () => (
             <SkeletonCard>
                 <SkeletonBlock className="h-6 w-44" />
                 <div className="mt-4 space-y-3">
-                    {Array.from({ length: 7 }).map((_, index) => (
-                        <div key={index} className="space-y-2">
+                    {skeletonKeys(7, "analytics-bar").map((key) => (
+                        <div key={key} className="space-y-2">
                             <SkeletonBlock className="h-4 w-24" />
                             <SkeletonBlock className="h-2 w-full rounded-full" />
                         </div>
@@ -108,9 +111,9 @@ const AnalyticsSkeleton = () => (
             <SkeletonCard>
                 <SkeletonBlock className="h-6 w-36" />
                 <div className="mt-4 space-y-3">
-                    {Array.from({ length: 4 }).map((_, index) => (
+                    {skeletonKeys(4, "analytics-block").map((key) => (
                         <SkeletonBlock
-                            key={index}
+                            key={key}
                             className="h-16 w-full rounded-lg"
                         />
                     ))}
@@ -127,16 +130,16 @@ const ProfileSkeleton = () => (
             <SkeletonCard>
                 <SkeletonBlock className="h-6 w-40" />
                 <div className="mt-4 space-y-2">
-                    {Array.from({ length: 4 }).map((_, index) => (
-                        <SkeletonBlock key={index} className="h-4 w-full" />
+                    {skeletonKeys(4, "profile-a").map((key) => (
+                        <SkeletonBlock key={key} className="h-4 w-full" />
                     ))}
                 </div>
             </SkeletonCard>
             <SkeletonCard>
                 <SkeletonBlock className="h-6 w-44" />
                 <div className="mt-4 space-y-2">
-                    {Array.from({ length: 3 }).map((_, index) => (
-                        <SkeletonBlock key={index} className="h-4 w-full" />
+                    {skeletonKeys(3, "profile-b").map((key) => (
+                        <SkeletonBlock key={key} className="h-4 w-full" />
                     ))}
                 </div>
             </SkeletonCard>
@@ -150,22 +153,80 @@ const SettingsSkeleton = () => (
         <SkeletonCard>
             <SkeletonBlock className="h-6 w-36" />
             <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                {Array.from({ length: 6 }).map((_, index) => (
+                {skeletonKeys(6, "settings-grid").map((key) => (
                     <SkeletonBlock
-                        key={index}
+                        key={key}
                         className="h-10 w-full rounded-lg"
                     />
                 ))}
             </div>
             <div className="mt-5 space-y-3">
-                {Array.from({ length: 4 }).map((_, index) => (
+                {skeletonKeys(4, "settings-row").map((key) => (
                     <SkeletonBlock
-                        key={index}
+                        key={key}
                         className="h-10 w-full rounded-lg"
                     />
                 ))}
             </div>
         </SkeletonCard>
+    </div>
+);
+
+const CoursesSkeleton = () => (
+    <div className="space-y-5" style={{ color: "var(--dashboard-fg)" }}>
+        <TopBarSkeleton />
+        <div className="grid gap-6">
+            {skeletonKeys(3, "courses-card").map((key) => (
+                <SkeletonCard key={key} className="p-6">
+                    <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1 space-y-3">
+                            <SkeletonBlock className="h-6 w-2/3" />
+                            <SkeletonBlock className="h-4 w-full" />
+                            <SkeletonBlock className="h-4 w-1/2" />
+                        </div>
+                        <SkeletonBlock className="h-10 w-16 rounded-lg" />
+                    </div>
+                    <SkeletonBlock className="mt-4 h-3 w-full rounded-full" />
+                    <div className="mt-6 space-y-2">
+                        {skeletonKeys(3, `${key}-mod`).map((modKey) => (
+                            <SkeletonBlock
+                                key={modKey}
+                                className="h-12 w-full rounded-lg"
+                            />
+                        ))}
+                    </div>
+                    <div className="mt-6 flex gap-3">
+                        <SkeletonBlock className="h-10 w-40 rounded-lg" />
+                        <SkeletonBlock className="h-10 w-32 rounded-lg" />
+                    </div>
+                </SkeletonCard>
+            ))}
+        </div>
+    </div>
+);
+
+const AssignmentsSkeleton = () => (
+    <div className="space-y-5" style={{ color: "var(--dashboard-fg)" }}>
+        <TopBarSkeleton />
+        {skeletonKeys(3, "assign-bucket").map((key) => (
+            <SkeletonCard key={key} className="p-0">
+                <div
+                    className="border-b px-6 py-5"
+                    style={{ borderColor: "var(--dashboard-border)" }}
+                >
+                    <SkeletonBlock className="h-5 w-32" />
+                    <SkeletonBlock className="mt-2 h-3 w-48" />
+                </div>
+                <div className="space-y-3 px-6 py-5">
+                    {skeletonKeys(2, `${key}-row`).map((rowKey) => (
+                        <SkeletonBlock
+                            key={rowKey}
+                            className="h-20 w-full rounded-lg"
+                        />
+                    ))}
+                </div>
+            </SkeletonCard>
+        ))}
     </div>
 );
 
@@ -179,8 +240,8 @@ const StoreHomeSkeleton = () => (
             <SkeletonBlock className="h-4 w-72 max-w-full" />
         </div>
         <div className="grid gap-4 md:grid-cols-2">
-            {Array.from({ length: 2 }).map((_, index) => (
-                <SkeletonCard key={index} className="rounded-2xl p-5">
+            {skeletonKeys(2, "store-home").map((key) => (
+                <SkeletonCard key={key} className="rounded-2xl p-5">
                     <SkeletonBlock className="h-7 w-28" />
                     <SkeletonBlock className="mt-3 h-4 w-full" />
                     <SkeletonBlock className="mt-2 h-4 w-5/6" />
@@ -201,9 +262,9 @@ const StoreGridSkeleton = () => (
             <SkeletonBlock className="h-4 w-64 max-w-full" />
         </div>
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {Array.from({ length: 6 }).map((_, index) => (
+            {skeletonKeys(6, "store-grid").map((key) => (
                 <div
-                    key={index}
+                    key={key}
                     className="overflow-hidden rounded-2xl border"
                     style={{
                         borderColor: "var(--dashboard-border)",
@@ -242,6 +303,8 @@ const StoreDetailSkeleton = () => (
 
 export {
     AnalyticsSkeleton,
+    AssignmentsSkeleton,
+    CoursesSkeleton,
     DashboardOverviewSkeleton,
     ProfileSkeleton,
     SettingsSkeleton,

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { navForRole } from "@/features/dashboard/config/navConfig";
 import { useRoleTheme } from "@/features/dashboard/context/RoleThemeContext";
 import { cn } from "@/lib/cn";
@@ -19,6 +19,16 @@ import { cn } from "@/lib/cn";
  *
  * Sign-out goes through `next-auth/react` so the JWT cookie is invalidated
  * before redirect; never clear it manually.
+ *
+ * Responsive behaviour (driven by DashboardChrome):
+ *  - Desktop (>=768px): a persistent fixed rail, expandable or collapsed to
+ *    icons-only via `collapsed`. Tooltips (native `title`) surface labels when
+ *    collapsed.
+ *  - Mobile (<768px): the same `<aside>` becomes an off-canvas drawer that
+ *    slides in from the left when `drawerOpen` is true. While closed it is
+ *    translated off-screen and made `inert` so it stays out of the tab order
+ *    and away from assistive tech. While open, focus is trapped inside it and
+ *    returned to the hamburger (`triggerRef`) on close.
  */
 const Icon = ({ d, size = 18 }) => (
     <svg
@@ -48,13 +58,115 @@ const isActiveHref = (pathname, href, home) => {
     return pathname === href || pathname.startsWith(`${href}/`);
 };
 
-const SideBar = ({ collapsed = false, onToggleCollapsed }) => {
+// A single nav link. Module-level so both the flat and grouped render paths
+// share one implementation (active state is computed by the caller).
+const NavItem = ({ item, active, collapsed, onClick }) => (
+    <Link
+        href={item.href}
+        onClick={onClick}
+        title={collapsed ? item.label : undefined}
+        aria-current={active ? "page" : undefined}
+        aria-label={collapsed ? item.label : undefined}
+        className={cn(
+            "group relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all",
+            collapsed && "md:h-11 md:w-11 md:justify-center md:px-0",
+            active
+                ? "text-[var(--role-accent-ink)]"
+                : "hover:translate-x-[1px]",
+        )}
+        style={
+            active
+                ? {
+                      backgroundColor: "var(--role-accent)",
+                      boxShadow: "0 6px 18px var(--role-accent-soft)",
+                  }
+                : { color: "var(--dashboard-fg)" }
+        }
+    >
+        {active ? null : (
+            <span
+                className="absolute left-0 top-1/2 h-5 w-[2px] -translate-y-1/2 rounded-full opacity-0 transition-opacity group-hover:opacity-100"
+                style={{ backgroundColor: "var(--role-accent)" }}
+            />
+        )}
+        <span
+            className={cn(
+                "inline-flex h-7 w-7 items-center justify-center rounded-md transition-colors",
+                active ? "" : "group-hover:scale-[1.02]",
+            )}
+            style={
+                active
+                    ? {
+                          backgroundColor: "rgba(255,255,255,0.18)",
+                          color: "var(--role-accent-ink)",
+                      }
+                    : {
+                          backgroundColor: "var(--role-accent-soft)",
+                          color: "var(--role-accent)",
+                      }
+            }
+        >
+            <Icon d={item.icon} size={16} />
+        </span>
+        <span className={cn("truncate", collapsed && "md:hidden")}>
+            {item.label}
+        </span>
+    </Link>
+);
+
+const SideBar = ({
+    collapsed = false,
+    onToggleCollapsed,
+    desktop = false,
+    drawerOpen = false,
+    onCloseDrawer,
+    triggerRef,
+}) => {
     const pathname = usePathname();
     const { data: session } = useSession();
     const { role, theme } = useRoleTheme();
     const [signingOut, setSigningOut] = useState(false);
+    const asideRef = useRef(null);
 
     const nav = useMemo(() => navForRole(role), [role]);
+
+    // While the mobile drawer is open: move focus inside it, trap Tab within
+    // it, and restore focus to the trigger (hamburger) once it closes.
+    useEffect(() => {
+        if (!drawerOpen) return;
+        const node = asideRef.current;
+        if (!node) return;
+
+        const getFocusable = () =>
+            Array.from(
+                node.querySelectorAll(
+                    'a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])',
+                ),
+            ).filter((el) => el.offsetParent !== null);
+
+        getFocusable()[0]?.focus();
+
+        const onKeyDown = (event) => {
+            if (event.key !== "Tab") return;
+            const items = getFocusable();
+            if (items.length === 0) return;
+            const first = items[0];
+            const last = items[items.length - 1];
+            if (event.shiftKey && document.activeElement === first) {
+                event.preventDefault();
+                last.focus();
+            } else if (!event.shiftKey && document.activeElement === last) {
+                event.preventDefault();
+                first.focus();
+            }
+        };
+
+        node.addEventListener("keydown", onKeyDown);
+        return () => {
+            node.removeEventListener("keydown", onKeyDown);
+            triggerRef?.current?.focus();
+        };
+    }, [drawerOpen, triggerRef]);
 
     const userName = session?.user?.name || "Member";
     const userEmail = session?.user?.email || "";
@@ -72,8 +184,13 @@ const SideBar = ({ collapsed = false, onToggleCollapsed }) => {
 
     return (
         <aside
+            ref={asideRef}
+            id="dashboard-sidebar"
+            inert={!desktop && !drawerOpen ? true : undefined}
             className={cn(
-                "w-full md:fixed md:left-0 md:top-0 md:h-screen md:overflow-hidden flex flex-col border-b md:border-r md:border-b-0 transition-[width] duration-300 ease-out",
+                "fixed inset-y-0 left-0 z-50 flex w-72 flex-col overflow-hidden border-r transition-[transform,width] duration-300 ease-out md:z-30",
+                drawerOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full",
+                "md:translate-x-0 md:shadow-none",
                 collapsed ? "md:w-[4.75rem]" : "md:w-64",
             )}
             style={{
@@ -156,9 +273,40 @@ const SideBar = ({ collapsed = false, onToggleCollapsed }) => {
                         )}
                     </svg>
                 </button>
+                {/* Mobile-only drawer close. The collapse button above is
+                    desktop-only (md:inline-flex), so on mobile this takes the
+                    ml-auto slot. */}
+                <button
+                    type="button"
+                    onClick={onCloseDrawer}
+                    aria-label="Close navigation menu"
+                    className="ml-auto inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-md border transition hover:opacity-90 focus:outline-none focus:ring-2 md:hidden"
+                    style={{
+                        borderColor: "var(--dashboard-border)",
+                        color: "var(--dashboard-muted)",
+                        backgroundColor: "var(--dashboard-surface)",
+                    }}
+                >
+                    <svg
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        aria-hidden="true"
+                    >
+                        <path d="M18 6L6 18" />
+                        <path d="M6 6l12 12" />
+                    </svg>
+                </button>
             </div>
 
-            {/* Primary nav */}
+            {/* Primary nav — grouped when the role declares `groups`, flat
+                otherwise. Group labels collapse to a hairline rule on the
+                icon-only rail so the structure survives without text. */}
             <nav
                 className={cn(
                     "flex-1 overflow-y-auto px-3 py-4 flex flex-col gap-1",
@@ -167,75 +315,65 @@ const SideBar = ({ collapsed = false, onToggleCollapsed }) => {
                 style={{ scrollbarWidth: "thin" }}
                 aria-label="Primary"
             >
-                {nav.items.map((item) => {
-                    const active = isActiveHref(pathname, item.href, nav.home);
-                    return (
-                        <Link
-                            key={item.href}
-                            href={item.href}
-                            title={collapsed ? item.label : undefined}
-                            aria-current={active ? "page" : undefined}
-                            aria-label={collapsed ? item.label : undefined}
-                            className={cn(
-                                "group relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all",
-                                collapsed &&
-                                    "md:h-11 md:w-11 md:justify-center md:px-0",
-                                active
-                                    ? "text-[var(--role-accent-ink)]"
-                                    : "hover:translate-x-[1px]",
-                            )}
-                            style={
-                                active
-                                    ? {
-                                          backgroundColor: "var(--role-accent)",
-                                          boxShadow:
-                                              "0 6px 18px var(--role-accent-soft)",
-                                      }
-                                    : {
-                                          color: "var(--dashboard-fg)",
-                                      }
-                            }
-                        >
-                            {active ? null : (
-                                <span
-                                    className="absolute left-0 top-1/2 h-5 w-[2px] -translate-y-1/2 rounded-full opacity-0 transition-opacity group-hover:opacity-100"
-                                    style={{
-                                        backgroundColor: "var(--role-accent)",
-                                    }}
-                                />
-                            )}
-                            <span
-                                className={cn(
-                                    "inline-flex h-7 w-7 items-center justify-center rounded-md transition-colors",
-                                    active ? "" : "group-hover:scale-[1.02]",
-                                )}
-                                style={
-                                    active
-                                        ? {
+                {nav.groups
+                    ? nav.groups.map((group, groupIndex) => (
+                          <div
+                              key={group.label}
+                              className={cn(
+                                  "flex w-full flex-col gap-1",
+                                  groupIndex > 0 && "mt-4",
+                                  collapsed && "md:items-center",
+                              )}
+                          >
+                              {collapsed ? (
+                                  groupIndex > 0 ? (
+                                      <span
+                                          className="hidden md:mb-1 md:block md:h-px md:w-6"
+                                          style={{
                                               backgroundColor:
-                                                  "rgba(255,255,255,0.18)",
-                                              color: "var(--role-accent-ink)",
-                                          }
-                                        : {
-                                              backgroundColor:
-                                                  "var(--role-accent-soft)",
-                                              color: "var(--role-accent)",
-                                          }
-                                }
-                            >
-                                <Icon d={item.icon} size={16} />
-                            </span>
-                            <span
-                                className={cn(
-                                    "truncate",
-                                    collapsed && "md:hidden",
-                                )}
-                            >
-                                {item.label}
-                            </span>
-                        </Link>
-                    );
-                })}
+                                                  "var(--dashboard-border)",
+                                          }}
+                                          aria-hidden="true"
+                                      />
+                                  ) : null
+                              ) : (
+                                  <p
+                                      className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-[0.18em]"
+                                      style={{
+                                          color: "var(--dashboard-muted)",
+                                      }}
+                                  >
+                                      {group.label}
+                                  </p>
+                              )}
+                              {group.items.map((item) => (
+                                  <NavItem
+                                      key={item.href}
+                                      item={item}
+                                      active={isActiveHref(
+                                          pathname,
+                                          item.href,
+                                          nav.home,
+                                      )}
+                                      collapsed={collapsed}
+                                      onClick={onCloseDrawer}
+                                  />
+                              ))}
+                          </div>
+                      ))
+                    : nav.items.map((item) => (
+                          <NavItem
+                              key={item.href}
+                              item={item}
+                              active={isActiveHref(
+                                  pathname,
+                                  item.href,
+                                  nav.home,
+                              )}
+                              collapsed={collapsed}
+                              onClick={onCloseDrawer}
+                          />
+                      ))}
             </nav>
 
             {/* Footer: profile/settings + identity card + sign out */}
@@ -257,6 +395,7 @@ const SideBar = ({ collapsed = false, onToggleCollapsed }) => {
                             <Link
                                 key={item.href}
                                 href={item.href}
+                                onClick={onCloseDrawer}
                                 title={collapsed ? item.label : undefined}
                                 aria-label={collapsed ? item.label : undefined}
                                 className={cn(

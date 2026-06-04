@@ -8,21 +8,28 @@ import {
     PageLoading,
 } from "@/features/dashboard/components/ui/widgets/PageState";
 import Panel from "@/features/dashboard/components/ui/widgets/Panel";
+import {
+    computeBatchHealth,
+    formatDate,
+    HealthBar,
+    MetaItem,
+    ProjectionTag,
+    pluralize,
+    RankBadge,
+    TierChip,
+    tierOf,
+} from "@/features/dashboard/coordinator/coordinatorShared";
 import { api } from "@/lib/api";
 
-function formatDate(value) {
-    if (!value) return "—";
-    try {
-        return new Date(value).toLocaleDateString(undefined, {
-            day: "2-digit",
-            month: "short",
-            year: "numeric",
-        });
-    } catch {
-        return "—";
-    }
-}
-
+/**
+ * Coordinator Batches — read-only.
+ *
+ * Lists every batch the backend scopes to this coordinator's institution(s),
+ * ranked healthiest-first, and shows a read-only detail (meta, trainers,
+ * students). There is intentionally NO assign / remove / edit control: roster
+ * and staffing changes are owned by admins and trainers. The backend rejects
+ * those writes for a coordinator anyway — we simply never offer them.
+ */
 export default function CoordinatorBatchesPage() {
     const [batches, setBatches] = useState(null);
     const [error, setError] = useState(null);
@@ -34,18 +41,30 @@ export default function CoordinatorBatchesPage() {
             const result = await api("/batches");
             const list = Array.isArray(result?.data) ? result.data : [];
             setBatches(list);
-            if (list.length && !selectedId) {
-                setSelectedId(list[0].id);
-            }
         } catch (err) {
             setError(err.message);
             setBatches([]);
         }
-    }, [selectedId]);
+    }, []);
 
     useEffect(() => {
         loadBatches();
     }, [loadBatches]);
+
+    const ranked = useMemo(() => {
+        if (!batches) return [];
+        return batches
+            .map((b) => ({ batch: b, health: computeBatchHealth(b) }))
+            .sort(
+                (a, b) =>
+                    tierOf(a.health.tier).rank - tierOf(b.health.tier).rank ||
+                    b.health.enrolled - a.health.enrolled,
+            );
+    }, [batches]);
+
+    useEffect(() => {
+        if (ranked.length && !selectedId) setSelectedId(ranked[0].batch.id);
+    }, [ranked, selectedId]);
 
     if (batches === null) return <PageLoading label="Loading batches" />;
     if (error)
@@ -58,80 +77,97 @@ export default function CoordinatorBatchesPage() {
         );
 
     return (
-        <div className="space-y-8">
+        <div className="space-y-6">
             <RoleHero
-                eyebrow="Operations · Batches"
-                title="Batches you run."
-                subtitle="Manage rosters, trainers, and dates. Mutations are scoped to your institution by the backend — you cannot touch batches outside your access."
+                eyebrow="Programme Operations · Batches"
+                title="Every cohort you watch over."
+                subtitle="A read-only directory of the batches in your institution, strongest first. Rosters and trainers are managed by admins and trainers — you see the live state."
+                actions={<ProjectionTag />}
             />
 
-            {batches.length === 0 ? (
+            {ranked.length === 0 ? (
                 <PageEmpty
-                    title="No batches assigned"
-                    description="No batches are visible under your institution scope yet."
+                    title="No batches in scope yet"
+                    description="No batches are visible under your institution scope. They appear here the moment an admin creates one for your school."
                 />
             ) : (
-                <div className="grid gap-6 lg:grid-cols-[320px_1fr]">
+                <div className="grid gap-6 lg:grid-cols-[340px_1fr]">
                     <BatchList
-                        batches={batches}
+                        ranked={ranked}
                         selectedId={selectedId}
                         onSelect={setSelectedId}
                     />
-                    {selectedId && (
-                        <BatchDetail
-                            batchId={selectedId}
-                            onChanged={loadBatches}
-                        />
-                    )}
+                    {selectedId && <BatchDetail batchId={selectedId} />}
                 </div>
             )}
         </div>
     );
 }
 
-function BatchList({ batches, selectedId, onSelect }) {
+function BatchList({ ranked, selectedId, onSelect }) {
     return (
         <Panel
             eyebrow="Directory"
-            title="All batches"
-            description={`${batches.length} total`}
+            title="Cohorts"
+            description={`${pluralize(ranked.length, "batch", "batches")} · strongest first`}
             padded={false}
         >
             <ul>
-                {batches.map((b) => {
+                {ranked.map((row, i) => {
+                    const b = row.batch;
                     const active = b.id === selectedId;
                     return (
                         <li key={b.id}>
                             <button
                                 type="button"
                                 onClick={() => onSelect(b.id)}
-                                className="w-full border-b px-5 py-3 text-left"
+                                className="flex w-full items-center gap-3 border-b px-4 py-3 text-left transition-colors"
                                 style={{
                                     borderColor: "var(--dashboard-border)",
                                     backgroundColor: active
-                                        ? "color-mix(in srgb, var(--dashboard-surface) 90%, var(--role-accent) 10%)"
+                                        ? "var(--role-accent-soft)"
                                         : "transparent",
                                 }}
                             >
-                                <div
-                                    className="font-display text-base"
-                                    style={{ color: "var(--dashboard-fg)" }}
-                                >
-                                    {b.name}
-                                </div>
-                                <div
-                                    className="mt-1 text-[11px] uppercase tracking-[0.18em]"
-                                    style={{ color: "var(--dashboard-muted)" }}
-                                >
-                                    {b.institution?.name ?? "—"} ·{" "}
-                                    {b.course?.title ?? "—"}
-                                </div>
-                                <div
-                                    className="mt-1 text-xs"
-                                    style={{ color: "var(--dashboard-muted)" }}
-                                >
-                                    {b._count?.students ?? 0} students ·{" "}
-                                    {b._count?.trainers ?? 0} trainers
+                                <RankBadge n={i + 1} />
+                                <div className="min-w-0 flex-1">
+                                    <div
+                                        className="truncate font-display text-base"
+                                        style={{ color: "var(--dashboard-fg)" }}
+                                    >
+                                        {b.name}
+                                    </div>
+                                    <div
+                                        className="mt-0.5 truncate text-[11px] uppercase tracking-[0.14em]"
+                                        style={{
+                                            color: "var(--dashboard-muted)",
+                                        }}
+                                    >
+                                        {b.institution?.name ?? "—"}
+                                    </div>
+                                    <div className="mt-2">
+                                        <HealthBar
+                                            value={row.health.score}
+                                            tier={row.health.tier}
+                                            height={5}
+                                        />
+                                    </div>
+                                    <div
+                                        className="mt-1.5 text-[11px]"
+                                        style={{
+                                            color: "var(--dashboard-muted)",
+                                        }}
+                                    >
+                                        {pluralize(
+                                            row.health.enrolled,
+                                            "student",
+                                        )}{" "}
+                                        ·{" "}
+                                        {pluralize(
+                                            row.health.trainers,
+                                            "trainer",
+                                        )}
+                                    </div>
                                 </div>
                             </button>
                         </li>
@@ -142,7 +178,7 @@ function BatchList({ batches, selectedId, onSelect }) {
     );
 }
 
-function BatchDetail({ batchId, onChanged }) {
+function BatchDetail({ batchId }) {
     const [detail, setDetail] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -164,490 +200,160 @@ function BatchDetail({ batchId, onChanged }) {
         load();
     }, [load]);
 
-    if (loading) return <PageLoading label="Loading batch" />;
+    if (loading) return <PageLoading label="Loading cohort" />;
     if (error)
         return (
             <PageError
-                title="Could not load batch"
+                title="Could not load cohort"
                 message={error}
                 onRetry={load}
             />
         );
     if (!detail) return null;
 
+    const health = computeBatchHealth(detail);
+    const trainers = detail.trainers ?? [];
+    const students = [...(detail.students ?? [])].sort((a, b) =>
+        (a.user?.fullName ?? "").localeCompare(b.user?.fullName ?? ""),
+    );
+
     return (
         <div className="space-y-6">
             <Panel
-                eyebrow="Batch"
+                eyebrow="Cohort"
                 title={detail.name}
-                description={`${detail.institution?.name ?? ""} · ${detail.course?.title ?? ""}`}
+                description={`${detail.institution?.name ?? ""}${
+                    detail.course?.title ? ` · ${detail.course.title}` : ""
+                }`}
+                actions={<TierChip tier={health.tier} />}
             >
-                <dl className="grid gap-4 sm:grid-cols-3 text-sm">
-                    <Meta
-                        label="Start date"
+                <dl className="grid gap-4 sm:grid-cols-4">
+                    <MetaItem
+                        label="Start"
                         value={formatDate(detail.startDate)}
                     />
-                    <Meta label="End date" value={formatDate(detail.endDate)} />
-                    <Meta
+                    <MetaItem label="End" value={formatDate(detail.endDate)} />
+                    <MetaItem
                         label="Status"
                         value={detail.isActive ? "Active" : "Inactive"}
                     />
+                    <MetaItem label="Enrolled" value={health.enrolled} />
                 </dl>
+                <div className="mt-5">
+                    <HealthBar value={health.score} tier={health.tier} />
+                </div>
             </Panel>
 
-            <TrainersPanel
-                batch={detail}
-                onChanged={() => {
-                    load();
-                    onChanged?.();
-                }}
-            />
+            <Panel
+                eyebrow="Delivery"
+                title="Trainers"
+                description={pluralize(
+                    trainers.length,
+                    "trainer assigned",
+                    "trainers assigned",
+                )}
+                padded={false}
+            >
+                {trainers.length === 0 ? (
+                    <div className="px-6 py-6">
+                        <p
+                            className="text-sm"
+                            style={{ color: "var(--dashboard-muted)" }}
+                        >
+                            No trainer is assigned yet. Assignment is handled by
+                            an admin.
+                        </p>
+                    </div>
+                ) : (
+                    <RosterTable
+                        head={["Trainer", "Email", "Specialization"]}
+                        rows={trainers.map((bt) => [
+                            bt.trainer?.user?.fullName ?? "—",
+                            bt.trainer?.user?.email ?? "—",
+                            bt.trainer?.specialization ?? "—",
+                        ])}
+                    />
+                )}
+            </Panel>
 
-            <StudentsPanel
-                batch={detail}
-                onChanged={() => {
-                    load();
-                    onChanged?.();
-                }}
-            />
+            <Panel
+                eyebrow="Roster"
+                title="Students"
+                description={pluralize(
+                    students.length,
+                    "student enrolled",
+                    "students enrolled",
+                )}
+                padded={false}
+            >
+                {students.length === 0 ? (
+                    <div className="px-6 py-6">
+                        <p
+                            className="text-sm"
+                            style={{ color: "var(--dashboard-muted)" }}
+                        >
+                            No students are enrolled in this cohort yet.
+                        </p>
+                    </div>
+                ) : (
+                    <RosterTable
+                        head={["Student", "Enrollment", "Email"]}
+                        rows={students.map((s) => [
+                            s.user?.fullName ?? "—",
+                            s.enrollmentNumber ?? "—",
+                            s.user?.email ?? "—",
+                        ])}
+                    />
+                )}
+            </Panel>
         </div>
     );
 }
 
-function Meta({ label, value }) {
+function RosterTable({ head, rows }) {
     return (
-        <div>
-            <dt
-                className="text-[10px] uppercase tracking-[0.18em]"
-                style={{ color: "var(--dashboard-muted)" }}
-            >
-                {label}
-            </dt>
-            <dd
-                className="mt-1 font-display text-base"
-                style={{ color: "var(--dashboard-fg)" }}
-            >
-                {value}
-            </dd>
-        </div>
-    );
-}
-
-function TrainersPanel({ batch, onChanged }) {
-    const [members, setMembers] = useState(null);
-    const [picker, setPicker] = useState("");
-    const [busy, setBusy] = useState(null);
-    const [error, setError] = useState(null);
-
-    const loadMembers = useCallback(async () => {
-        setError(null);
-        try {
-            const result = await api(
-                `/institutions/${batch.institutionId}/members?role=TRAINER`,
-            );
-            setMembers(Array.isArray(result?.data) ? result.data : []);
-        } catch (err) {
-            setError(err.message);
-            setMembers([]);
-        }
-    }, [batch.institutionId]);
-
-    useEffect(() => {
-        loadMembers();
-    }, [loadMembers]);
-
-    const assigned = batch.trainers || [];
-    const assignedIds = useMemo(
-        () => new Set(assigned.map((bt) => bt.trainer.id)),
-        [assigned],
-    );
-    const candidates = useMemo(
-        () =>
-            (members ?? []).filter(
-                (m) => m.profileId && !assignedIds.has(m.profileId),
-            ),
-        [members, assignedIds],
-    );
-
-    async function assign() {
-        if (!picker) return;
-        setBusy("assign");
-        setError(null);
-        try {
-            await api(`/batches/${batch.id}/trainers`, {
-                method: "POST",
-                body: JSON.stringify({ trainerId: picker }),
-            });
-            setPicker("");
-            await loadMembers();
-            onChanged?.();
-        } catch (err) {
-            setError(err.message);
-        } finally {
-            setBusy(null);
-        }
-    }
-
-    async function remove(trainerId) {
-        if (!confirm("Remove this trainer from the batch?")) return;
-        setBusy(`remove:${trainerId}`);
-        setError(null);
-        try {
-            await api(`/batches/${batch.id}/trainers/${trainerId}`, {
-                method: "DELETE",
-            });
-            onChanged?.();
-        } catch (err) {
-            setError(err.message);
-        } finally {
-            setBusy(null);
-        }
-    }
-
-    return (
-        <Panel
-            eyebrow="Roster"
-            title="Trainers"
-            description={`${assigned.length} assigned`}
-            padded={false}
-        >
-            <div className="px-6 py-4">
-                <div className="flex flex-wrap items-center gap-2">
-                    <select
-                        value={picker}
-                        onChange={(e) => setPicker(e.target.value)}
-                        className="rounded-md border px-3 py-2 text-sm"
-                        style={{
-                            borderColor: "var(--dashboard-border)",
-                            backgroundColor: "var(--dashboard-surface)",
-                            color: "var(--dashboard-fg)",
-                        }}
+        <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm">
+                <thead>
+                    <tr
+                        className="text-[10px] uppercase tracking-[0.18em]"
+                        style={{ color: "var(--dashboard-muted)" }}
                     >
-                        <option value="">Add trainer…</option>
-                        {candidates.map((m) => (
-                            <option key={m.profileId} value={m.profileId}>
-                                {m.fullName} {m.email ? `(${m.email})` : ""}
-                            </option>
-                        ))}
-                    </select>
-                    <button
-                        type="button"
-                        onClick={assign}
-                        disabled={!picker || busy === "assign"}
-                        className="rounded-md px-3 py-2 text-xs font-semibold disabled:opacity-60"
-                        style={{
-                            backgroundColor: "var(--role-accent)",
-                            color: "var(--role-accent-ink)",
-                        }}
-                    >
-                        {busy === "assign" ? "Adding…" : "Add"}
-                    </button>
-                    {error && (
-                        <span className="text-xs" style={{ color: "#b91c1c" }}>
-                            {error}
-                        </span>
-                    )}
-                </div>
-            </div>
-
-            {assigned.length === 0 ? (
-                <div className="px-6 pb-6">
-                    <PageEmpty
-                        title="No trainers"
-                        description="Add a trainer above."
-                    />
-                </div>
-            ) : (
-                <div className="overflow-x-auto">
-                    <table className="w-full text-left text-sm">
-                        <thead>
-                            <tr
-                                className="text-[10px] uppercase tracking-[0.18em]"
-                                style={{ color: "var(--dashboard-muted)" }}
+                        {head.map((h, i) => (
+                            <th
+                                key={h}
+                                className={`py-3 font-medium ${i === 0 ? "px-6" : "px-3"}`}
                             >
-                                <th className="px-6 py-3 font-medium">
-                                    Trainer
-                                </th>
-                                <th className="px-3 py-3 font-medium">Email</th>
-                                <th className="px-3 py-3 font-medium">
-                                    Specialization
-                                </th>
-                                <th className="px-6 py-3 font-medium" />
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {assigned.map((bt) => {
-                                const tid = bt.trainer.id;
-                                return (
-                                    <tr
-                                        key={tid}
-                                        className="border-t"
-                                        style={{
-                                            borderColor:
-                                                "var(--dashboard-border)",
-                                        }}
-                                    >
-                                        <td
-                                            className="px-6 py-3"
-                                            style={{
-                                                color: "var(--dashboard-fg)",
-                                            }}
-                                        >
-                                            {bt.trainer.user?.fullName ?? "—"}
-                                        </td>
-                                        <td
-                                            className="px-3 py-3 text-xs"
-                                            style={{
-                                                color: "var(--dashboard-muted)",
-                                            }}
-                                        >
-                                            {bt.trainer.user?.email ?? "—"}
-                                        </td>
-                                        <td
-                                            className="px-3 py-3 text-xs"
-                                            style={{
-                                                color: "var(--dashboard-muted)",
-                                            }}
-                                        >
-                                            {bt.trainer.specialization ?? "—"}
-                                        </td>
-                                        <td className="px-6 py-3 text-right">
-                                            <button
-                                                type="button"
-                                                onClick={() => remove(tid)}
-                                                disabled={
-                                                    busy === `remove:${tid}`
-                                                }
-                                                className="rounded-md border px-3 py-1 text-xs font-semibold"
-                                                style={{
-                                                    borderColor:
-                                                        "var(--dashboard-border)",
-                                                    color: "var(--dashboard-fg)",
-                                                }}
-                                            >
-                                                {busy === `remove:${tid}`
-                                                    ? "Removing…"
-                                                    : "Remove"}
-                                            </button>
-                                        </td>
-                                    </tr>
-                                );
-                            })}
-                        </tbody>
-                    </table>
-                </div>
-            )}
-        </Panel>
-    );
-}
-
-function StudentsPanel({ batch, onChanged }) {
-    const [members, setMembers] = useState(null);
-    const [picker, setPicker] = useState("");
-    const [busy, setBusy] = useState(null);
-    const [error, setError] = useState(null);
-
-    const loadMembers = useCallback(async () => {
-        setError(null);
-        try {
-            const result = await api(
-                `/institutions/${batch.institutionId}/members?role=STUDENT`,
-            );
-            setMembers(Array.isArray(result?.data) ? result.data : []);
-        } catch (err) {
-            setError(err.message);
-            setMembers([]);
-        }
-    }, [batch.institutionId]);
-
-    useEffect(() => {
-        loadMembers();
-    }, [loadMembers]);
-
-    const assigned = batch.students || [];
-    const assignedIds = useMemo(
-        () => new Set(assigned.map((s) => s.id)),
-        [assigned],
-    );
-    const candidates = useMemo(
-        () =>
-            (members ?? []).filter(
-                (m) =>
-                    m.profileId &&
-                    !assignedIds.has(m.profileId) &&
-                    m.currentBatchId !== batch.id,
-            ),
-        [members, assignedIds, batch.id],
-    );
-
-    async function assign() {
-        if (!picker) return;
-        setBusy("assign");
-        setError(null);
-        try {
-            await api(`/batches/${batch.id}/students`, {
-                method: "POST",
-                body: JSON.stringify({ studentId: picker }),
-            });
-            setPicker("");
-            await loadMembers();
-            onChanged?.();
-        } catch (err) {
-            setError(err.message);
-        } finally {
-            setBusy(null);
-        }
-    }
-
-    async function remove(studentId) {
-        if (
-            !confirm(
-                "Remove this student from the batch? The student's current batch will be cleared.",
-            )
-        )
-            return;
-        setBusy(`remove:${studentId}`);
-        setError(null);
-        try {
-            await api(`/batches/${batch.id}/students/${studentId}`, {
-                method: "DELETE",
-            });
-            onChanged?.();
-        } catch (err) {
-            setError(err.message);
-        } finally {
-            setBusy(null);
-        }
-    }
-
-    return (
-        <Panel
-            eyebrow="Roster"
-            title="Students"
-            description={`${assigned.length} assigned`}
-            padded={false}
-        >
-            <div className="px-6 py-4">
-                <div className="flex flex-wrap items-center gap-2">
-                    <select
-                        value={picker}
-                        onChange={(e) => setPicker(e.target.value)}
-                        className="rounded-md border px-3 py-2 text-sm"
-                        style={{
-                            borderColor: "var(--dashboard-border)",
-                            backgroundColor: "var(--dashboard-surface)",
-                            color: "var(--dashboard-fg)",
-                        }}
-                    >
-                        <option value="">Add student…</option>
-                        {candidates.map((m) => (
-                            <option key={m.profileId} value={m.profileId}>
-                                {m.fullName}{" "}
-                                {m.enrollmentNumber
-                                    ? `(${m.enrollmentNumber})`
-                                    : ""}
-                            </option>
+                                {h}
+                            </th>
                         ))}
-                    </select>
-                    <button
-                        type="button"
-                        onClick={assign}
-                        disabled={!picker || busy === "assign"}
-                        className="rounded-md px-3 py-2 text-xs font-semibold disabled:opacity-60"
-                        style={{
-                            backgroundColor: "var(--role-accent)",
-                            color: "var(--role-accent-ink)",
-                        }}
-                    >
-                        {busy === "assign" ? "Adding…" : "Add"}
-                    </button>
-                    {error && (
-                        <span className="text-xs" style={{ color: "#b91c1c" }}>
-                            {error}
-                        </span>
-                    )}
-                </div>
-            </div>
-
-            {assigned.length === 0 ? (
-                <div className="px-6 pb-6">
-                    <PageEmpty
-                        title="No students"
-                        description="Add a student above."
-                    />
-                </div>
-            ) : (
-                <div className="overflow-x-auto">
-                    <table className="w-full text-left text-sm">
-                        <thead>
-                            <tr
-                                className="text-[10px] uppercase tracking-[0.18em]"
-                                style={{ color: "var(--dashboard-muted)" }}
-                            >
-                                <th className="px-6 py-3 font-medium">
-                                    Student
-                                </th>
-                                <th className="px-3 py-3 font-medium">
-                                    Enrollment
-                                </th>
-                                <th className="px-3 py-3 font-medium">Email</th>
-                                <th className="px-6 py-3 font-medium" />
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {assigned.map((s) => (
-                                <tr
-                                    key={s.id}
-                                    className="border-t"
+                    </tr>
+                </thead>
+                <tbody>
+                    {rows.map((cells) => (
+                        <tr
+                            key={cells.join("|")}
+                            className="border-t"
+                            style={{ borderColor: "var(--dashboard-border)" }}
+                        >
+                            {cells.map((c, i) => (
+                                <td
+                                    key={head[i]}
+                                    className={`py-3 ${i === 0 ? "px-6" : "px-3 text-xs"}`}
                                     style={{
-                                        borderColor: "var(--dashboard-border)",
+                                        color:
+                                            i === 0
+                                                ? "var(--dashboard-fg)"
+                                                : "var(--dashboard-muted)",
                                     }}
                                 >
-                                    <td
-                                        className="px-6 py-3"
-                                        style={{ color: "var(--dashboard-fg)" }}
-                                    >
-                                        {s.user?.fullName ?? "—"}
-                                    </td>
-                                    <td
-                                        className="px-3 py-3 text-xs"
-                                        style={{
-                                            color: "var(--dashboard-muted)",
-                                        }}
-                                    >
-                                        {s.enrollmentNumber ?? "—"}
-                                    </td>
-                                    <td
-                                        className="px-3 py-3 text-xs"
-                                        style={{
-                                            color: "var(--dashboard-muted)",
-                                        }}
-                                    >
-                                        {s.user?.email ?? "—"}
-                                    </td>
-                                    <td className="px-6 py-3 text-right">
-                                        <button
-                                            type="button"
-                                            onClick={() => remove(s.id)}
-                                            disabled={busy === `remove:${s.id}`}
-                                            className="rounded-md border px-3 py-1 text-xs font-semibold"
-                                            style={{
-                                                borderColor:
-                                                    "var(--dashboard-border)",
-                                                color: "var(--dashboard-fg)",
-                                            }}
-                                        >
-                                            {busy === `remove:${s.id}`
-                                                ? "Removing…"
-                                                : "Remove"}
-                                        </button>
-                                    </td>
-                                </tr>
+                                    {c}
+                                </td>
                             ))}
-                        </tbody>
-                    </table>
-                </div>
-            )}
-        </Panel>
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
+        </div>
     );
 }

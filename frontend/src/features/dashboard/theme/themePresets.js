@@ -75,7 +75,7 @@ export const dashboardThemes = {
             border: "#515151",
             primary: "#eeeeee",
             primaryForeground: "#111111",
-            accent: "#3c3c3c",
+            accent: "#6d6d6d",
             accentForeground: "#ffffff",
             danger: "#ef4444",
             dangerForeground: "#ffffff",

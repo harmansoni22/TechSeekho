@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from "react";
 import { api } from "../../../lib/api";
-import GradualBlurMemo from "./Effects/GradualBlur";
 
 const QUICK_SUGGESTIONS = [
     "What courses do you recommend for beginners?",

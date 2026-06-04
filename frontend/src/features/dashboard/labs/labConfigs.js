@@ -1,56 +1,39 @@
 /**
  * Skill Labs configuration: per-technology metadata + exercise libraries.
  *
- * Each tech has the same exercise shape so the LabExperience component can
- * render any tech without branching:
+ * Two labs ship today:
+ *   - `web`   → HTML + CSS + JavaScript in one workspace. Exercises are
+ *               tagged with a `category` ("HTML" | "CSS" | "JavaScript")
+ *               so the library panel can still group them visually.
+ *   - `react` → React + hooks on Babel-via-iframe (no Sandpack runtime).
+ *
+ * Each exercise has the same shape across techs:
  *   {
  *     id           Unique slug used as the localStorage key suffix
  *     title        Human-readable exercise name
  *     difficulty   "Beginner" | "Intermediate" | "Advanced"
+ *     category     Optional sub-grouping label rendered in the library panel
  *     instructions Short paragraph of what to build
  *     starter      Code map keyed by lang ({ html?, css?, js?, jsx? })
  *   }
  *
- * The `langs` field on the tech itself controls which editors show. The
- * `mode` field switches the iframe srcDoc builder ("vanilla" vs "react").
+ * The `langs` field on the tech itself controls which editors the workspace
+ * surfaces. The `mode` field switches the iframe srcDoc builder
+ * ("vanilla" → buildStaticDocumentFromFiles, "react" → buildReactSrcDoc).
  */
 
 export const LAB_TECHS = {
-    html: {
-        id: "html",
-        label: "HTML",
-        title: "HTML Workspace",
-        tagline: "Semantic markup, structure, and accessibility",
+    web: {
+        id: "web",
+        label: "Web",
+        title: "Web Workspace",
+        tagline: "HTML, CSS, and JavaScript in one playground",
         description:
-            "Build pages with proper structure, semantic elements, and accessible defaults. Pure HTML — no styling, no scripts.",
-        difficulty: "Beginner",
-        langs: ["html"],
-        mode: "vanilla",
-        accent: "#f97316", // orange — HTML's classic
-    },
-    css: {
-        id: "css",
-        label: "CSS",
-        title: "CSS Workspace",
-        tagline: "Layout, typography, and responsive design",
-        description:
-            "Style pre-built HTML with modern CSS. Practice flexbox, grid, custom properties, and responsive breakpoints.",
-        difficulty: "Beginner",
-        langs: ["html", "css"],
-        mode: "vanilla",
-        accent: "#2563eb", // blue — CSS3 logo blue
-    },
-    javascript: {
-        id: "javascript",
-        label: "JavaScript",
-        title: "JavaScript Workspace",
-        tagline: "DOM, events, and browser APIs",
-        description:
-            "Wire interactivity into a page. Practice DOM lookups, event listeners, and common browser APIs.",
-        difficulty: "Intermediate",
+            "Build complete mini-projects — semantic markup, styling, and interactivity in a single workspace with all three editors and a sandboxed live preview.",
+        difficulty: "Beginner – Intermediate",
         langs: ["html", "css", "js"],
         mode: "vanilla",
-        accent: "#eab308", // yellow — JS's classic
+        accent: "#6366f1", // indigo — neutral across HTML/CSS/JS branding
     },
     react: {
         id: "react",
@@ -66,17 +49,105 @@ export const LAB_TECHS = {
     },
 };
 
-export const LAB_TECH_ORDER = ["html", "css", "javascript", "react"];
+export const LAB_TECH_ORDER = ["web", "react"];
+
+// ─────────────────────────────────────────────────────────────────────────
+// CDN libraries available inside the Web lab
+// ─────────────────────────────────────────────────────────────────────────
+//
+// Curated catalog of common frontend libraries that students can opt into
+// per exercise. The workspace toolbar exposes a Libraries picker; toggled
+// libraries get injected into the preview iframe's <head> or end-of-<body>
+// before the user's HTML is rendered.
+//
+// Keep this list short and stable. Adding new libraries means a new entry
+// here — nothing else needs to change.
+//
+// Shape:
+//   {
+//     id        Stable slug used in localStorage
+//     label     Human-readable name
+//     description One-line tagline shown in the picker
+//     head      Array of HTML tags to insert before </head>
+//     body      Array of HTML tags to insert before </body> (after user code)
+//   }
+
+export const LAB_LIBRARIES = {
+    bootstrap: {
+        id: "bootstrap",
+        label: "Bootstrap 5",
+        description: "CSS framework with components, grid, and utilities.",
+        head: [
+            '<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous">',
+        ],
+        body: [
+            '<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>',
+        ],
+    },
+    tailwind: {
+        id: "tailwind",
+        label: "Tailwind CSS",
+        description:
+            "Utility-first CSS via the browser CDN build. Dev-only — not for production.",
+        head: ['<script src="https://cdn.tailwindcss.com"></script>'],
+        body: [],
+    },
+    jquery: {
+        id: "jquery",
+        label: "jQuery 3",
+        description: "DOM helpers, events, and AJAX shortcuts.",
+        head: [],
+        body: [
+            '<script src="https://code.jquery.com/jquery-3.7.1.min.js" crossorigin="anonymous"></script>',
+        ],
+    },
+    alpine: {
+        id: "alpine",
+        label: "Alpine.js",
+        description: "Lightweight reactive sprinkles for HTML.",
+        head: [
+            '<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js" crossorigin="anonymous"></script>',
+        ],
+        body: [],
+    },
+    "animate-css": {
+        id: "animate-css",
+        label: "Animate.css",
+        description: "Ready-to-use CSS animations.",
+        head: [
+            '<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" crossorigin="anonymous">',
+        ],
+        body: [],
+    },
+};
+
+export const LAB_LIBRARY_ORDER = [
+    "bootstrap",
+    "tailwind",
+    "jquery",
+    "alpine",
+    "animate-css",
+];
+
+export function getLibrary(libraryId) {
+    return LAB_LIBRARIES[libraryId] ?? null;
+}
+
+export function getLibraries(libraryIds = []) {
+    return libraryIds.map((id) => LAB_LIBRARIES[id]).filter(Boolean);
+}
 
 // ─────────────────────────────────────────────────────────────────────────
 // Exercise libraries
 // ─────────────────────────────────────────────────────────────────────────
 
-const HTML_EXERCISES = [
+const WEB_EXERCISES = [
+    // ── HTML ──────────────────────────────────────────────────────────
     {
         id: "semantic-article",
         title: "Semantic article layout",
         difficulty: "Beginner",
+        category: "HTML",
         instructions:
             "Compose a blog-post layout using <header>, <article>, <section>, and <footer>. Include an <h1>, a publication date, and at least two paragraphs.",
         starter: {
@@ -87,6 +158,7 @@ const HTML_EXERCISES = [
         id: "accessible-form",
         title: "Accessible contact form",
         difficulty: "Beginner",
+        category: "HTML",
         instructions:
             "Build a contact form with name, email, and message fields. Every input must have a <label> with a matching `for` attribute. Mark required fields with `required`.",
         starter: {
@@ -97,6 +169,7 @@ const HTML_EXERCISES = [
         id: "nav-landmark",
         title: "Primary navigation",
         difficulty: "Beginner",
+        category: "HTML",
         instructions:
             'Build a primary navigation using <nav> with an unordered list of links. Mark the current page link with `aria-current="page"`.',
         starter: {
@@ -107,19 +180,20 @@ const HTML_EXERCISES = [
         id: "data-table",
         title: "Data table with headers",
         difficulty: "Intermediate",
+        category: "HTML",
         instructions:
             'Build a table of three students with name, batch, and progress. Use <thead>, <tbody>, and <th scope="col">. Add a <caption> describing the table.',
         starter: {
             html: `<table>\n  <caption>Batch 2026-A progress</caption>\n  <thead>\n    <tr>\n      <th scope="col">Name</th>\n      <th scope="col">Batch</th>\n      <th scope="col">Progress</th>\n    </tr>\n  </thead>\n  <tbody>\n    <tr>\n      <td>—</td>\n      <td>2026-A</td>\n      <td>—</td>\n    </tr>\n    <!-- Add two more rows -->\n  </tbody>\n</table>`,
         },
     },
-];
 
-const CSS_EXERCISES = [
+    // ── CSS ───────────────────────────────────────────────────────────
     {
         id: "centered-card",
         title: "Center a card",
         difficulty: "Beginner",
+        category: "CSS",
         instructions:
             "Center the card both vertically and horizontally in the viewport using flexbox. Round the corners and add a soft shadow.",
         starter: {
@@ -131,6 +205,7 @@ const CSS_EXERCISES = [
         id: "flexbox-columns",
         title: "Three-column flexbox layout",
         difficulty: "Beginner",
+        category: "CSS",
         instructions:
             "Lay out three coloured columns side by side. They should wrap onto two rows when the viewport is narrower than ~600px.",
         starter: {
@@ -142,6 +217,7 @@ const CSS_EXERCISES = [
         id: "css-grid-gallery",
         title: "Responsive image grid",
         difficulty: "Intermediate",
+        category: "CSS",
         instructions:
             "Build a 3-column grid that becomes 2 columns at ~768px and 1 column at ~480px. Use CSS Grid, not media queries if possible (think `auto-fill`).",
         starter: {
@@ -153,6 +229,7 @@ const CSS_EXERCISES = [
         id: "hover-button",
         title: "Animated button hover",
         difficulty: "Intermediate",
+        category: "CSS",
         instructions:
             "Style the button so it lifts slightly on hover and shows a soft shadow underneath. Use `transition` for smoothness.",
         starter: {
@@ -160,13 +237,13 @@ const CSS_EXERCISES = [
             css: `body {\n  font-family: system-ui;\n  display: grid;\n  place-items: center;\n  min-height: 100vh;\n}\n\n.cta {\n  padding: 12px 20px;\n  border-radius: 8px;\n  border: none;\n  background: #0f172a;\n  color: white;\n  font-weight: 600;\n  cursor: pointer;\n}\n\n/* Add a hover transition that lifts the button */\n`,
         },
     },
-];
 
-const JS_EXERCISES = [
+    // ── JavaScript ────────────────────────────────────────────────────
     {
         id: "counter",
         title: "Counter with state",
         difficulty: "Beginner",
+        category: "JavaScript",
         instructions:
             "Make the plus/minus buttons mutate the counter. Prevent it from going below 0. Bonus: disable the minus button when at 0.",
         starter: {
@@ -179,6 +256,7 @@ const JS_EXERCISES = [
         id: "list-filter",
         title: "Filter a list from input",
         difficulty: "Beginner",
+        category: "JavaScript",
         instructions:
             "Render the array into the <ul>. Filter it as the user types. Show a 'No matches' message when filtered list is empty.",
         starter: {
@@ -191,6 +269,7 @@ const JS_EXERCISES = [
         id: "form-validation",
         title: "Validate an email field",
         difficulty: "Intermediate",
+        category: "JavaScript",
         instructions:
             "On submit, show an inline error if the email is empty or doesn't contain '@'. Show a success message if valid. Don't actually submit.",
         starter: {
@@ -203,6 +282,7 @@ const JS_EXERCISES = [
         id: "local-todo",
         title: "Todo list with localStorage",
         difficulty: "Intermediate",
+        category: "JavaScript",
         instructions:
             "Persist todos to localStorage. Render saved todos on load. Add an input to create new ones and a click-to-delete on each.",
         starter: {
@@ -218,6 +298,7 @@ const REACT_EXERCISES = [
         id: "counter",
         title: "Counter with useState",
         difficulty: "Beginner",
+        category: "Hooks",
         instructions:
             "Use useState to track the count. Hook up plus/minus buttons. Disable minus when count is 0.",
         starter: {
@@ -229,6 +310,7 @@ const REACT_EXERCISES = [
         id: "list-filter",
         title: "Filterable list with map",
         difficulty: "Beginner",
+        category: "Rendering",
         instructions:
             "Render the items array as a list. Add a search input that filters the rendered items live using useState + array.filter.",
         starter: {
@@ -240,6 +322,7 @@ const REACT_EXERCISES = [
         id: "controlled-form",
         title: "Controlled form with validation",
         difficulty: "Intermediate",
+        category: "Forms",
         instructions:
             "Build a sign-up form with email + password fields. Track values with useState. Show an inline error when email is missing '@' or password is shorter than 6 chars. Disable submit until valid.",
         starter: {
@@ -251,6 +334,7 @@ const REACT_EXERCISES = [
         id: "useeffect-fetch",
         title: "useEffect with cleanup",
         difficulty: "Intermediate",
+        category: "Hooks",
         instructions:
             "Build a 'time since mount' counter that updates every second. Use useEffect to start the interval and return a cleanup function that clears it on unmount. Add a toggle button to mount/unmount the component.",
         starter: {
@@ -261,9 +345,7 @@ const REACT_EXERCISES = [
 ];
 
 export const LAB_EXERCISES = {
-    html: HTML_EXERCISES,
-    css: CSS_EXERCISES,
-    javascript: JS_EXERCISES,
+    web: WEB_EXERCISES,
     react: REACT_EXERCISES,
 };
 

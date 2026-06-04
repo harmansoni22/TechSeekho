@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import RoleHero from "@/features/dashboard/components/ui/layout/PageShell/RoleHero";
 import {
@@ -306,9 +307,12 @@ function AssignmentList({ assignments }) {
                                         className="px-6 py-3"
                                         style={{ color: "var(--dashboard-fg)" }}
                                     >
-                                        <div className="font-display text-base">
+                                        <Link
+                                            href={`/dashboard/trainer/assignments/${a.id}`}
+                                            className="font-display text-base hover:underline"
+                                        >
                                             {a.title}
-                                        </div>
+                                        </Link>
                                         {a.description && (
                                             <div
                                                 className="mt-1 line-clamp-2 text-xs"
@@ -370,17 +374,20 @@ function AssignmentList({ assignments }) {
     );
 }
 
+// Field wraps a labelled control. Use a div + paragraph for the heading so
+// Biome's noLabelWithoutControl doesn't trip on the implicit child input
+// (children render their own form control).
 function Field({ label, children, className = "" }) {
     return (
-        <label className={`block text-sm ${className}`}>
-            <span
+        <div className={`block text-sm ${className}`}>
+            <p
                 className="text-[11px] uppercase tracking-[0.18em]"
                 style={{ color: "var(--dashboard-muted)" }}
             >
                 {label}
-            </span>
+            </p>
             {children}
-        </label>
+        </div>
     );
 }
 

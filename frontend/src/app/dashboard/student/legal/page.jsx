@@ -6,17 +6,17 @@ export const metadata = { title: "Legal · Student · TechSeekho" };
 
 const docs = [
     {
-        href: "/landingpage/privacy-policy",
+        href: "/dashboard/student/legal/privacy-policy",
         title: "Privacy Policy",
         blurb: "How TechSeekho collects, uses, and protects your data.",
     },
     {
-        href: "/landingpage/terms-and-conditions",
+        href: "/dashboard/student/legal/terms-and-conditions",
         title: "Terms & Conditions",
         blurb: "The agreement that governs your use of the platform.",
     },
     {
-        href: "/landingpage/refund-policy",
+        href: "/dashboard/student/legal/refund-policy",
         title: "Refund Policy",
         blurb: "How refunds work if you withdraw from a course.",
     },
@@ -40,15 +40,13 @@ export default function StudentLegalPage() {
                     >
                         <Link
                             href={d.href}
-                            target="_blank"
-                            rel="noopener noreferrer"
                             className="inline-block rounded-md px-3 py-1.5 text-xs font-semibold"
                             style={{
                                 backgroundColor: "var(--role-accent)",
                                 color: "var(--role-accent-ink)",
                             }}
                         >
-                            Open ↗
+                            Open
                         </Link>
                     </Panel>
                 ))}

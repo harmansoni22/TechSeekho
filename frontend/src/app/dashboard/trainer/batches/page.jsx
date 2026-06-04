@@ -67,7 +67,10 @@ export default function TrainerBatchesPage() {
                                 key={b.id}
                                 className="flex items-center justify-between gap-4 px-6 py-4"
                             >
-                                <div className="min-w-0">
+                                <Link
+                                    href={`/dashboard/trainer/batches/${b.id}`}
+                                    className="min-w-0 flex-1 hover:underline"
+                                >
                                     <p
                                         className="truncate font-display text-base"
                                         style={{ color: "var(--dashboard-fg)" }}
@@ -81,20 +84,33 @@ export default function TrainerBatchesPage() {
                                         }}
                                     >
                                         {b.course?.title ?? "—"} ·{" "}
-                                        {b.institution?.name ?? "—"}
+                                        {b.institution?.name ?? "—"} ·{" "}
+                                        {b._count?.students ?? 0} student
+                                        {(b._count?.students ?? 0) === 1
+                                            ? ""
+                                            : "s"}
                                     </p>
-                                </div>
-                                <div className="flex items-center gap-3">
+                                </Link>
+                                <div className="flex shrink-0 items-center gap-3">
                                     <span
-                                        className="text-xs"
-                                        style={{ color: "var(--role-accent)" }}
+                                        className="rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider"
+                                        style={{
+                                            backgroundColor:
+                                                b.isActive === false
+                                                    ? "rgba(148, 163, 184, 0.18)"
+                                                    : "rgba(16, 185, 129, 0.12)",
+                                            color:
+                                                b.isActive === false
+                                                    ? "var(--dashboard-muted)"
+                                                    : "#047857",
+                                        }}
                                     >
                                         {b.isActive === false
-                                            ? "inactive"
-                                            : "active"}
+                                            ? "Inactive"
+                                            : "Active"}
                                     </span>
                                     <Link
-                                        href="/dashboard/trainer/assignments"
+                                        href={`/dashboard/trainer/attendance?batchId=${b.id}`}
                                         className="rounded-md border px-3 py-1 text-xs"
                                         style={{
                                             borderColor:
@@ -102,7 +118,7 @@ export default function TrainerBatchesPage() {
                                             color: "var(--dashboard-fg)",
                                         }}
                                     >
-                                        Assignments
+                                        Attendance
                                     </Link>
                                 </div>
                             </li>

@@ -1,9 +1,9 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 
-export default function PendingApprovalPage() {
+function PendingApprovalContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const next = searchParams?.get("next");
@@ -31,6 +31,7 @@ export default function PendingApprovalPage() {
 
                 <div className="flex flex-col sm:flex-row gap-3">
                     <button
+                        type="button"
                         onClick={() => router.push("/login")}
                         className="px-4 py-2 rounded-xl bg-white/10 border border-white/15 hover:bg-white/15"
                     >
@@ -38,6 +39,7 @@ export default function PendingApprovalPage() {
                     </button>
                     {canGoBack && (
                         <button
+                            type="button"
                             onClick={() => router.push(next)}
                             className="px-4 py-2 rounded-xl bg-[#7c3aed]/20 border border-[#7c3aed]/35 hover:bg-[#7c3aed]/25"
                         >
@@ -47,5 +49,13 @@ export default function PendingApprovalPage() {
                 </div>
             </div>
         </main>
+    );
+}
+
+export default function PendingApprovalPage() {
+    return (
+        <Suspense fallback={null}>
+            <PendingApprovalContent />
+        </Suspense>
     );
 }

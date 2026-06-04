@@ -91,6 +91,7 @@ const TechLabPage = () => {
         (snapshot) => {
             saveLabProject(techId, exercise.id, snapshot.code, {
                 activeFile: snapshot.activeFile,
+                libraries: snapshot.libraries,
                 savedAt: snapshot.savedAt,
             });
             setSavedSet((current) => {

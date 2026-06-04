@@ -52,12 +52,16 @@ function safeRemove(key) {
  * Save the current editor state for an exercise. Also updates a per-tech
  * index so the landing page can show "N exercises saved" without reading
  * every key.
+ *
+ * `meta.libraries` is an optional array of CDN library IDs to persist
+ * alongside the code (Web lab only — React lab leaves it undefined).
  */
 export function saveLabProject(techId, exerciseId, code, meta = {}) {
     if (!techId || !exerciseId) return;
     const payload = {
         code,
         activeFile: meta.activeFile,
+        libraries: Array.isArray(meta.libraries) ? meta.libraries : undefined,
         savedAt: meta.savedAt ?? Date.now(),
     };
     safeSet(keyFor(techId, exerciseId), JSON.stringify(payload));

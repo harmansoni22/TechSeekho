@@ -112,7 +112,7 @@ export async function COURSES_FOR_LANDING_PAGE() {
         if (!courses) console.error("No courses found");
         const COURSE = [];
 
-        courses.map((course) => {
+        courses.forEach((course) => {
             COURSE.push(course);
         });
 

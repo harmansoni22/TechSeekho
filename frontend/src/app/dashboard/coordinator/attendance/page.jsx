@@ -8,31 +8,54 @@ import {
     PageLoading,
 } from "@/features/dashboard/components/ui/widgets/PageState";
 import Panel from "@/features/dashboard/components/ui/widgets/Panel";
+import {
+    ATTENDANCE_TARGET,
+    attendanceRate,
+    COORD_ICONS,
+    formatDate,
+    HealthBar,
+    ProjectionTag,
+    pluralize,
+    TierChip,
+    WinStat,
+} from "@/features/dashboard/coordinator/coordinatorShared";
 import { api } from "@/lib/api";
 
-const STATUSES = ["PRESENT", "ABSENT", "LATE"];
+const STATUS_TONES = {
+    PRESENT: { fg: "#047857", bg: "rgba(16, 185, 129, 0.12)", order: 0 },
+    LATE: { fg: "#b45309", bg: "rgba(245, 158, 11, 0.16)", order: 1 },
+    ABSENT: {
+        fg: "var(--dashboard-danger, #dc2626)",
+        bg: "color-mix(in srgb, var(--dashboard-danger, #dc2626) 12%, transparent)",
+        order: 2,
+    },
+};
 
-function todayIso() {
-    const d = new Date();
-    d.setHours(0, 0, 0, 0);
-    return d.toISOString().slice(0, 10);
+function dayKey(value) {
+    try {
+        return new Date(value).toISOString().slice(0, 10);
+    } catch {
+        return "";
+    }
 }
 
+/**
+ * Coordinator Attendance — read-only projection.
+ *
+ * Replaces the old marking screen. A coordinator can VIEW attendance (the
+ * backend allows the read and blocks the write); marking is owned by trainers
+ * and admins. We lead with the trailing rate (a win when it clears target),
+ * break it down by day, and list present students first.
+ */
 export default function CoordinatorAttendancePage() {
     const [batches, setBatches] = useState(null);
     const [batchesError, setBatchesError] = useState(null);
-
     const [batchId, setBatchId] = useState("");
-    const [date, setDate] = useState(todayIso());
 
-    const [roster, setRoster] = useState(null);
-    const [rosterLoading, setRosterLoading] = useState(false);
-    const [rosterError, setRosterError] = useState(null);
-
-    const [marks, setMarks] = useState({});
-    const [saving, setSaving] = useState(false);
-    const [saveError, setSaveError] = useState(null);
-    const [saveOk, setSaveOk] = useState(null);
+    const [records, setRecords] = useState(null);
+    const [recordsLoading, setRecordsLoading] = useState(false);
+    const [recordsError, setRecordsError] = useState(null);
+    const [selectedDate, setSelectedDate] = useState("");
 
     const loadBatches = useCallback(async () => {
         setBatchesError(null);
@@ -40,9 +63,7 @@ export default function CoordinatorAttendancePage() {
             const result = await api("/batches");
             const list = Array.isArray(result?.data) ? result.data : [];
             setBatches(list);
-            if (list.length && !batchId) {
-                setBatchId(list[0].id);
-            }
+            if (list.length && !batchId) setBatchId(list[0].id);
         } catch (err) {
             setBatchesError(err.message);
             setBatches([]);
@@ -53,86 +74,57 @@ export default function CoordinatorAttendancePage() {
         loadBatches();
     }, [loadBatches]);
 
-    const loadRoster = useCallback(async () => {
-        if (!batchId || !date) return;
-        setRosterLoading(true);
-        setRosterError(null);
-        setSaveError(null);
-        setSaveOk(null);
+    const loadRecords = useCallback(async () => {
+        if (!batchId) return;
+        setRecordsLoading(true);
+        setRecordsError(null);
+        setSelectedDate("");
         try {
-            const [detail, existing] = await Promise.all([
-                api(`/batches/${batchId}`),
-                api(
-                    `/attendance?batchId=${encodeURIComponent(batchId)}&date=${encodeURIComponent(date)}`,
-                ),
-            ]);
-            const batch = detail?.data;
-            const records = Array.isArray(existing?.data) ? existing.data : [];
-
-            const existingByStudent = Object.fromEntries(
-                records.map((r) => [r.studentId, r.status]),
+            const res = await api(
+                `/attendance?batchId=${encodeURIComponent(batchId)}&limit=300`,
             );
-
-            const students = Array.isArray(batch?.students)
-                ? batch.students
-                : [];
-            const next = {};
-            for (const s of students) {
-                next[s.id] = existingByStudent[s.id] || "PRESENT";
-            }
-
-            setRoster({ batch, students, hasExisting: records.length > 0 });
-            setMarks(next);
+            setRecords(Array.isArray(res?.data) ? res.data : []);
         } catch (err) {
-            setRosterError(err.message);
-            setRoster(null);
+            setRecordsError(err.message);
+            setRecords([]);
         } finally {
-            setRosterLoading(false);
+            setRecordsLoading(false);
         }
-    }, [batchId, date]);
+    }, [batchId]);
 
     useEffect(() => {
-        if (batchId && date) loadRoster();
-    }, [batchId, date, loadRoster]);
+        if (batchId) loadRecords();
+    }, [batchId, loadRecords]);
 
-    const counts = useMemo(() => {
-        const c = { PRESENT: 0, ABSENT: 0, LATE: 0 };
-        for (const v of Object.values(marks)) if (c[v] !== undefined) c[v] += 1;
-        return c;
-    }, [marks]);
-
-    function setAll(status) {
-        if (!roster?.students) return;
-        const next = {};
-        for (const s of roster.students) next[s.id] = status;
-        setMarks(next);
-    }
-
-    async function handleSubmit() {
-        if (!batchId || !date) return;
-        const records = Object.entries(marks).map(([studentId, status]) => ({
-            studentId,
-            status,
-        }));
-        if (records.length === 0) return;
-        setSaving(true);
-        setSaveError(null);
-        setSaveOk(null);
-        try {
-            await api("/attendance/bulk", {
-                method: "POST",
-                body: JSON.stringify({ batchId, date, records }),
-            });
-            setSaveOk(
-                `Saved ${records.length} record${records.length === 1 ? "" : "s"} for ${date}.`,
-            );
-            await loadRoster();
-        } catch (err) {
-            setSaveError(err.message);
-        } finally {
-            setSaving(false);
+    const model = useMemo(() => {
+        if (!records) return null;
+        const overall = attendanceRate(records);
+        const byDate = new Map();
+        for (const r of records) {
+            const k = dayKey(r.date);
+            if (!k) continue;
+            if (!byDate.has(k)) byDate.set(k, []);
+            byDate.get(k).push(r);
         }
-    }
+        const days = [...byDate.entries()]
+            .map(([date, recs]) => ({ date, ...attendanceRate(recs) }))
+            .sort((a, b) => (a.date < b.date ? 1 : -1));
+        return { overall, days, byDate };
+    }, [records]);
+
+    const effectiveDate = selectedDate || model?.days?.[0]?.date || "";
+    const dayRoster = useMemo(() => {
+        if (!model || !effectiveDate) return [];
+        const recs = model.byDate.get(effectiveDate) ?? [];
+        return [...recs].sort(
+            (a, b) =>
+                (STATUS_TONES[a.status]?.order ?? 9) -
+                    (STATUS_TONES[b.status]?.order ?? 9) ||
+                (a.student?.user?.fullName ?? "").localeCompare(
+                    b.student?.user?.fullName ?? "",
+                ),
+        );
+    }, [model, effectiveDate]);
 
     if (batches === null) return <PageLoading label="Loading batches" />;
     if (batchesError)
@@ -144,16 +136,24 @@ export default function CoordinatorAttendancePage() {
             />
         );
 
+    const overallTier =
+        model?.overall?.rate === null || model?.overall?.rate === undefined
+            ? "setup"
+            : model.overall.rate >= ATTENDANCE_TARGET
+              ? "strong"
+              : "watch";
+
     return (
-        <div className="space-y-8">
+        <div className="space-y-6">
             <RoleHero
-                eyebrow="Operations · Attendance"
-                title="Mark and review attendance."
-                subtitle="Pick a batch and a date, mark each student, and save. Existing records for the same date are loaded automatically — re-saving overwrites them."
+                eyebrow="Programme Operations · Attendance"
+                title="How present your cohorts are."
+                subtitle="A read-only projection of attendance trainers have already marked. Present and late both count as attended. Nothing here changes the record."
+                actions={<ProjectionTag />}
             />
 
-            <Panel eyebrow="Filters" title="Batch & date">
-                <div className="grid gap-4 sm:grid-cols-3">
+            <Panel eyebrow="View" title="Pick a cohort">
+                <div className="grid gap-4 sm:grid-cols-2">
                     <label className="block text-sm">
                         <span
                             className="text-[11px] uppercase tracking-[0.18em]"
@@ -184,248 +184,220 @@ export default function CoordinatorAttendancePage() {
                             ))}
                         </select>
                     </label>
-
                     <label className="block text-sm">
                         <span
                             className="text-[11px] uppercase tracking-[0.18em]"
                             style={{ color: "var(--dashboard-muted)" }}
                         >
-                            Date
+                            Day {model?.days?.length ? "" : "(none recorded)"}
                         </span>
-                        <input
-                            type="date"
-                            value={date}
-                            max={todayIso()}
-                            onChange={(e) => setDate(e.target.value)}
-                            className="mt-1.5 w-full rounded-md border px-3 py-2"
+                        <select
+                            value={effectiveDate}
+                            onChange={(e) => setSelectedDate(e.target.value)}
+                            disabled={!model?.days?.length}
+                            className="mt-1.5 w-full rounded-md border px-3 py-2 disabled:opacity-60"
                             style={{
                                 borderColor: "var(--dashboard-border)",
                                 backgroundColor: "var(--dashboard-surface)",
                                 color: "var(--dashboard-fg)",
-                            }}
-                        />
-                    </label>
-
-                    <div className="flex items-end gap-2">
-                        <button
-                            type="button"
-                            onClick={loadRoster}
-                            className="rounded-md border px-3 py-2 text-xs font-semibold"
-                            style={{
-                                borderColor: "var(--dashboard-border)",
-                                color: "var(--dashboard-fg)",
-                                backgroundColor: "var(--dashboard-surface)",
                             }}
                         >
-                            Refresh
-                        </button>
-                    </div>
+                            {(model?.days ?? []).map((d) => (
+                                <option key={d.date} value={d.date}>
+                                    {formatDate(d.date)} · {d.rate ?? "—"}%
+                                </option>
+                            ))}
+                        </select>
+                    </label>
                 </div>
             </Panel>
 
             {batches.length === 0 ? (
                 <PageEmpty
-                    title="No batches available"
-                    description="Create a batch first or wait for one to be assigned to your institution."
+                    title="No batches in scope"
+                    description="Attendance appears here once a batch is assigned to your school and a trainer starts marking."
                 />
-            ) : rosterLoading ? (
-                <PageLoading label="Loading roster" />
-            ) : rosterError ? (
+            ) : recordsLoading ? (
+                <PageLoading label="Loading attendance" />
+            ) : recordsError ? (
                 <PageError
-                    title="Could not load roster"
-                    message={rosterError}
-                    onRetry={loadRoster}
+                    title="Could not load attendance"
+                    message={recordsError}
+                    onRetry={loadRecords}
                 />
-            ) : roster?.students && roster.students.length > 0 ? (
-                <Panel
-                    eyebrow="Roster"
-                    title={`${roster.batch?.name ?? "Batch"} — ${date}`}
-                    description={
-                        roster.hasExisting
-                            ? "Attendance for this date already exists. Saving will overwrite the existing rows."
-                            : "No attendance recorded yet for this date."
-                    }
-                    actions={
-                        <div className="flex flex-wrap items-center gap-2">
-                            <span
-                                className="text-xs"
-                                style={{ color: "var(--dashboard-muted)" }}
-                            >
-                                P {counts.PRESENT} · A {counts.ABSENT} · L{" "}
-                                {counts.LATE}
-                            </span>
-                            {STATUSES.map((s) => (
-                                <button
-                                    key={s}
-                                    type="button"
-                                    onClick={() => setAll(s)}
-                                    className="rounded-md border px-2 py-1 text-[11px] font-semibold uppercase tracking-wider"
-                                    style={{
-                                        borderColor: "var(--dashboard-border)",
-                                        color: "var(--dashboard-fg)",
-                                        backgroundColor:
-                                            "var(--dashboard-surface)",
-                                    }}
-                                >
-                                    All {s}
-                                </button>
-                            ))}
-                        </div>
-                    }
-                    padded={false}
-                >
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-left text-sm">
-                            <thead>
-                                <tr
-                                    className="text-[10px] uppercase tracking-[0.18em]"
-                                    style={{ color: "var(--dashboard-muted)" }}
-                                >
-                                    <th className="px-6 py-3 font-medium">
-                                        Student
-                                    </th>
-                                    <th className="px-3 py-3 font-medium">
-                                        Enrollment
-                                    </th>
-                                    <th className="px-3 py-3 font-medium">
-                                        Email
-                                    </th>
-                                    <th className="px-6 py-3 font-medium">
-                                        Status
-                                    </th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {roster.students.map((s) => (
-                                    <tr
-                                        key={s.id}
-                                        className="border-t"
-                                        style={{
-                                            borderColor:
-                                                "var(--dashboard-border)",
-                                        }}
+            ) : !model || model.overall.total === 0 ? (
+                <PageEmpty
+                    title="No attendance recorded yet"
+                    description="Once the cohort's trainer marks a session, the rate and roster show up here automatically."
+                />
+            ) : (
+                <>
+                    <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                        <WinStat
+                            label="Trailing attendance"
+                            value={`${model.overall.rate}%`}
+                            sub={`target ${ATTENDANCE_TARGET}% · ${pluralize(model.days.length, "day")} recorded`}
+                            tier={overallTier}
+                            icon={COORD_ICONS.pulse}
+                        />
+                        <WinStat
+                            label="Present"
+                            value={model.overall.present}
+                            sub="marked present"
+                            tier="strong"
+                            icon={COORD_ICONS.check}
+                        />
+                        <WinStat
+                            label="Late"
+                            value={model.overall.late}
+                            sub="still counted as attended"
+                        />
+                        <WinStat
+                            label="Absent"
+                            value={model.overall.absent}
+                            sub="across the window"
+                        />
+                    </section>
+
+                    <Panel
+                        eyebrow="Trend"
+                        title="By day"
+                        description="Most recent sessions first — each bar is that day's attended share."
+                        padded={false}
+                    >
+                        <ul
+                            className="divide-y"
+                            style={{ borderColor: "var(--dashboard-border)" }}
+                        >
+                            {model.days.map((d) => {
+                                const tier =
+                                    d.rate >= ATTENDANCE_TARGET
+                                        ? "strong"
+                                        : "watch";
+                                return (
+                                    <li
+                                        key={d.date}
+                                        className="flex items-center gap-4 px-6 py-3"
                                     >
-                                        <td
-                                            className="px-6 py-3"
+                                        <span
+                                            className="w-28 shrink-0 text-sm"
                                             style={{
                                                 color: "var(--dashboard-fg)",
                                             }}
                                         >
-                                            {s.user?.fullName ?? "—"}
-                                        </td>
-                                        <td
-                                            className="px-3 py-3 text-xs"
+                                            {formatDate(d.date)}
+                                        </span>
+                                        <div className="min-w-0 flex-1">
+                                            <HealthBar
+                                                value={d.rate ?? 0}
+                                                tier={tier}
+                                            />
+                                        </div>
+                                        <span
+                                            className="w-24 shrink-0 text-right text-xs"
                                             style={{
                                                 color: "var(--dashboard-muted)",
                                             }}
                                         >
-                                            {s.enrollmentNumber ?? "—"}
-                                        </td>
-                                        <td
-                                            className="px-3 py-3 text-xs"
-                                            style={{
-                                                color: "var(--dashboard-muted)",
-                                            }}
-                                        >
-                                            {s.user?.email ?? "—"}
-                                        </td>
-                                        <td className="px-6 py-3">
-                                            <div className="flex gap-1">
-                                                {STATUSES.map((status) => {
-                                                    const active =
-                                                        marks[s.id] === status;
-                                                    return (
-                                                        <button
-                                                            key={status}
-                                                            type="button"
-                                                            onClick={() =>
-                                                                setMarks(
-                                                                    (m) => ({
-                                                                        ...m,
-                                                                        [s.id]: status,
-                                                                    }),
-                                                                )
-                                                            }
-                                                            className="rounded-md border px-2 py-1 text-[11px] font-semibold uppercase tracking-wider"
-                                                            style={{
-                                                                borderColor:
-                                                                    active
-                                                                        ? "var(--role-accent)"
-                                                                        : "var(--dashboard-border)",
-                                                                color: active
-                                                                    ? "var(--role-accent-ink)"
-                                                                    : "var(--dashboard-fg)",
-                                                                backgroundColor:
-                                                                    active
-                                                                        ? "var(--role-accent)"
-                                                                        : "var(--dashboard-surface)",
-                                                            }}
-                                                        >
-                                                            {status}
-                                                        </button>
-                                                    );
-                                                })}
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
+                                            {d.attended}/{d.total} · {d.rate}%
+                                        </span>
+                                    </li>
+                                );
+                            })}
+                        </ul>
+                    </Panel>
 
-                    <div
-                        className="flex flex-wrap items-center justify-between gap-3 border-t px-6 py-4"
-                        style={{ borderColor: "var(--dashboard-border)" }}
+                    <Panel
+                        eyebrow="Roster"
+                        title={`Who was in — ${formatDate(effectiveDate)}`}
+                        description="Present and late listed first."
+                        padded={false}
+                        actions={
+                            <TierChip
+                                tier={
+                                    (model.byDate.get(effectiveDate)
+                                        ? attendanceRate(
+                                              model.byDate.get(effectiveDate),
+                                          ).rate
+                                        : 0) >= ATTENDANCE_TARGET
+                                        ? "strong"
+                                        : "watch"
+                                }
+                            />
+                        }
                     >
-                        <div
-                            className="text-xs"
-                            style={{ color: "var(--dashboard-muted)" }}
-                        >
-                            {roster.students.length} student
-                            {roster.students.length === 1 ? "" : "s"} ·{" "}
-                            {roster.hasExisting ? "edit mode" : "new entry"}
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left text-sm">
+                                <thead>
+                                    <tr
+                                        className="text-[10px] uppercase tracking-[0.18em]"
+                                        style={{
+                                            color: "var(--dashboard-muted)",
+                                        }}
+                                    >
+                                        <th className="px-6 py-3 font-medium">
+                                            Student
+                                        </th>
+                                        <th className="px-3 py-3 font-medium">
+                                            Email
+                                        </th>
+                                        <th className="px-6 py-3 font-medium text-right">
+                                            Status
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {dayRoster.map((r) => {
+                                        const tone =
+                                            STATUS_TONES[r.status] ??
+                                            STATUS_TONES.ABSENT;
+                                        return (
+                                            <tr
+                                                key={r.id}
+                                                className="border-t"
+                                                style={{
+                                                    borderColor:
+                                                        "var(--dashboard-border)",
+                                                }}
+                                            >
+                                                <td
+                                                    className="px-6 py-3"
+                                                    style={{
+                                                        color: "var(--dashboard-fg)",
+                                                    }}
+                                                >
+                                                    {r.student?.user
+                                                        ?.fullName ?? "—"}
+                                                </td>
+                                                <td
+                                                    className="px-3 py-3 text-xs"
+                                                    style={{
+                                                        color: "var(--dashboard-muted)",
+                                                    }}
+                                                >
+                                                    {r.student?.user?.email ??
+                                                        "—"}
+                                                </td>
+                                                <td className="px-6 py-3 text-right">
+                                                    <span
+                                                        className="inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider"
+                                                        style={{
+                                                            backgroundColor:
+                                                                tone.bg,
+                                                            color: tone.fg,
+                                                        }}
+                                                    >
+                                                        {r.status}
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
                         </div>
-                        <div className="flex items-center gap-3">
-                            {saveError && (
-                                <span
-                                    className="text-xs"
-                                    style={{ color: "#b91c1c" }}
-                                >
-                                    {saveError}
-                                </span>
-                            )}
-                            {saveOk && (
-                                <span
-                                    className="text-xs"
-                                    style={{ color: "#047857" }}
-                                >
-                                    {saveOk}
-                                </span>
-                            )}
-                            <button
-                                type="button"
-                                onClick={handleSubmit}
-                                disabled={saving}
-                                className="rounded-md px-4 py-2 text-sm font-semibold disabled:opacity-60"
-                                style={{
-                                    backgroundColor: "var(--role-accent)",
-                                    color: "var(--role-accent-ink)",
-                                }}
-                            >
-                                {saving
-                                    ? "Saving…"
-                                    : roster.hasExisting
-                                      ? "Overwrite attendance"
-                                      : "Save attendance"}
-                            </button>
-                        </div>
-                    </div>
-                </Panel>
-            ) : (
-                <PageEmpty
-                    title="No students in this batch"
-                    description="Assign students to this batch before marking attendance."
-                />
+                    </Panel>
+                </>
             )}
         </div>
     );

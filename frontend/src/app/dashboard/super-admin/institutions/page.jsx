@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -10,6 +11,7 @@ import {
     PageLoading,
 } from "@/features/dashboard/components/ui/widgets/PageState";
 import Panel from "@/features/dashboard/components/ui/widgets/Panel";
+import { LifecycleBadge } from "@/features/dashboard/super-admin/governanceShared";
 
 /**
  * Super-admin: Institutions directory + creation.
@@ -372,14 +374,15 @@ const InstitutionsPage = () => {
                                         }}
                                     >
                                         <td className="px-6 py-4">
-                                            <p
-                                                className="font-display text-base"
+                                            <Link
+                                                href={`/dashboard/super-admin/institutions/${inst.id}`}
+                                                className="font-display text-base hover:underline"
                                                 style={{
                                                     color: "var(--dashboard-fg)",
                                                 }}
                                             >
                                                 {inst.name}
-                                            </p>
+                                            </Link>
                                         </td>
                                         <td
                                             className="px-3 py-4 text-xs uppercase tracking-wider"
@@ -410,8 +413,13 @@ const InstitutionsPage = () => {
                                                 0}
                                         </td>
                                         <td className="px-3 py-4">
-                                            <ActivePill
-                                                active={inst.isActive}
+                                            <LifecycleBadge
+                                                status={
+                                                    inst.status ??
+                                                    (inst.isActive
+                                                        ? "ACTIVE"
+                                                        : "SUSPENDED")
+                                                }
                                             />
                                         </td>
                                         <td
@@ -480,20 +488,6 @@ const MetricStrip = ({ label, value, tone }) => (
                 : value || "—"}
         </p>
     </div>
-);
-
-const ActivePill = ({ active }) => (
-    <span
-        className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider"
-        style={{
-            backgroundColor: active
-                ? "rgba(16, 185, 129, 0.12)"
-                : "rgba(148, 163, 184, 0.16)",
-            color: active ? "#047857" : "var(--dashboard-muted)",
-        }}
-    >
-        {active ? "Active" : "Inactive"}
-    </span>
 );
 
 let _fieldIdCounter = 0;

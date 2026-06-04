@@ -12,16 +12,15 @@ import {
 import { listSavedExerciseIds } from "@/features/dashboard/labs/labStorage";
 
 /**
- * Skill Labs landing — one card per technology. Each card deep-links into
- * its own dedicated `/skill-labs/{techId}` route where the actual editor
- * runs. All exercises and saved-progress hints come from the centralized
- * labConfigs + labStorage; the cards don't know how the editor works.
+ * Skill Labs landing — one card per technology. The global dashboard sidebar
+ * (Overview, My Courses, Skill Labs, etc.) is rendered here by the dashboard
+ * layout. It is intentionally suppressed on the nested code-editor route
+ * (`/skill-labs/{techId}`) — see DashboardChrome's `immersive` check.
  */
-
 const SkillLabsLandingPage = () => {
     // Read saved counts on mount. We don't subscribe to localStorage
     // changes — the user will see fresh counts next time they revisit
-    // the landing page, which is the only place the badge appears.
+    // the landing page.
     const [savedCounts, setSavedCounts] = useState({});
 
     useEffect(() => {
@@ -86,7 +85,7 @@ const TechCard = ({ tech, exerciseCount, savedCount }) => {
                             }}
                             aria-hidden="true"
                         >
-                            {tech.label.slice(0, 2)}
+                            {tech.label.slice(0, 2).toUpperCase()}
                         </span>
                         <div className="min-w-0">
                             <p

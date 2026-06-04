@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import PageHeader from "@/features/dashboard/components/ui/layout/PageHeader/PageHeader";
 import { useRoleTheme } from "@/features/dashboard/context/RoleThemeContext";
 
 /**
@@ -17,7 +18,7 @@ const RoleHero = ({
     actions = null,
     showLive = true,
 }) => {
-    const { theme } = useRoleTheme();
+    const { role, theme } = useRoleTheme();
     const [dateLabel, setDateLabel] = useState("");
 
     useEffect(() => {
@@ -30,6 +31,21 @@ const RoleHero = ({
             }),
         );
     }, []);
+
+    // Super Admin has migrated to the compact command-center header system
+    // (PageHeader). Other roles keep the editorial hero until their own
+    // redesign pass, so this delegation stays role-scoped and fully
+    // reversible — see docs/dashboard-redesign/02-DESIGN-LANGUAGE.md.
+    if (role === "SUPER_ADMIN") {
+        return (
+            <PageHeader
+                eyebrow={eyebrow ?? theme?.label}
+                title={title}
+                subtitle={subtitle}
+                actions={actions}
+            />
+        );
+    }
 
     return (
         <header

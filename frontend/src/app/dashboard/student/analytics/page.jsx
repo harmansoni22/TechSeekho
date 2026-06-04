@@ -4,8 +4,8 @@ import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import ErrorScreen from "@/app/components/error/ErrorScreen";
-import LoadingSpinner from "@/app/components/ui/LoadingSpinner";
 import TopBar from "@/features/dashboard/components/ui/layout/TopBar/TopBar";
+import { AnalyticsSkeleton } from "@/features/dashboard/components/ui/skeletons/DashboardSkeletons";
 import Panel from "@/features/dashboard/components/ui/widgets/Panel.jsx";
 import { api } from "@/lib/api";
 
@@ -111,11 +111,7 @@ const StudentAnalyticsPage = () => {
     }, [bundle]);
 
     if (status === "loading" || loading) {
-        return (
-            <div className="flex items-center justify-center min-h-screen">
-                <LoadingSpinner />
-            </div>
-        );
+        return <AnalyticsSkeleton />;
     }
 
     if (error || !summary) {

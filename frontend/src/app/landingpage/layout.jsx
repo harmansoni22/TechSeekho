@@ -51,7 +51,7 @@ const Layout = async ({ children }) => {
             <Suspense fallback={null}>
                 <Navbar />
             </Suspense>
-            {/* <CustomCursor SPLAT_RADIUS={0.075} BLEND_MODE="difference" /> */}
+            <CustomCursor SPLAT_RADIUS={0.075} BLEND_MODE="difference" />
             <main id="landing-scroll-content" className="flex-1">
                 <Suspense fallback={<h1>Loading...</h1>}>
                     <LenisProvider>{children}</LenisProvider>

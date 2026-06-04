@@ -349,17 +349,22 @@ function ReviewDialog({ submission, onClose, onReviewed }) {
     return (
         <div
             className="fixed inset-0 z-50 flex items-center justify-center px-4"
-            style={{ backgroundColor: "rgba(0,0,0,0.55)" }}
-            onClick={onClose}
-            onKeyDown={(e) => {
-                if (e.key === "Escape") onClose();
-            }}
             role="dialog"
             aria-modal="true"
         >
+            {/* Backdrop — a real button so click + keyboard both close cleanly */}
+            <button
+                type="button"
+                aria-label="Close review dialog"
+                onClick={onClose}
+                className="absolute inset-0 cursor-default"
+                style={{
+                    backgroundColor: "rgba(0,0,0,0.55)",
+                    border: "0",
+                }}
+            />
             <div
-                className="w-full max-w-2xl overflow-hidden rounded-xl border"
-                onClick={(e) => e.stopPropagation()}
+                className="relative w-full max-w-2xl overflow-hidden rounded-xl border"
                 style={{
                     borderColor: "var(--dashboard-border)",
                     backgroundColor: "var(--dashboard-surface)",

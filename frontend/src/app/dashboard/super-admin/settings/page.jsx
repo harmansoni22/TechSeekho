@@ -1,19 +1,20 @@
 "use client";
 
 import RoleHero from "@/features/dashboard/components/ui/layout/PageShell/RoleHero";
-import BackendPending from "@/features/dashboard/components/ui/widgets/BackendPending";
 import Panel from "@/features/dashboard/components/ui/widgets/Panel";
 import { useDashboardTheme } from "@/features/dashboard/context/DashboardThemeContext";
 
 /**
- * SUPER_ADMIN personal settings page.
+ * SUPER_ADMIN — personal Settings.
  *
- * Distinct from /dashboard/super-admin/platform-config — *that* page changes
- * platform-wide behavior, *this* page is personal preferences only.
+ * Personal preferences live here. Platform-wide behaviour belongs on the
+ * Platform Configuration page — keep that boundary strict.
  *
- * The theme picker writes to localStorage via DashboardThemeContext; it does
- * not need a backend endpoint. The notification/security toggles below are
- * staged for the moment the user-preferences endpoint ships.
+ * Theme is the only preference that currently has a real persistence layer
+ * (localStorage via DashboardThemeContext). Account-level preferences (digest
+ * cadence, device fingerprint notifications, session length) are deferred
+ * until a /me/preferences endpoint ships — the panel below names the
+ * platform-level defaults so the user has accurate expectations.
  */
 
 const SuperAdminSettingsPage = () => {
@@ -30,7 +31,7 @@ const SuperAdminSettingsPage = () => {
             <Panel
                 eyebrow="Appearance"
                 title="Theme"
-                description="Picks the underlying dashboard palette. The role accent (crimson) is layered on top regardless of theme."
+                description="Picks the underlying dashboard palette. The role accent (crimson) is layered on top regardless of theme — that boundary is intentional and lives in features/dashboard/theme/."
             >
                 <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                     {Object.entries(themes).map(([key, t]) => {
@@ -40,6 +41,7 @@ const SuperAdminSettingsPage = () => {
                                 key={key}
                                 type="button"
                                 onClick={() => setThemeKey(key)}
+                                aria-pressed={active}
                                 className="group rounded-xl border p-4 text-left transition-all"
                                 style={{
                                     borderColor: active
@@ -49,6 +51,7 @@ const SuperAdminSettingsPage = () => {
                                     boxShadow: active
                                         ? "0 8px 26px var(--role-accent-soft)"
                                         : "none",
+                                    cursor: "pointer",
                                 }}
                             >
                                 <div className="flex items-center gap-2">
@@ -90,62 +93,53 @@ const SuperAdminSettingsPage = () => {
 
             <section className="grid gap-6 md:grid-cols-2">
                 <Panel
+                    eyebrow="Security defaults"
+                    title="What the platform already enforces"
+                    description="These values come from the runtime configuration. See Platform Configuration for the live snapshot."
+                >
+                    <ul className="space-y-3 text-sm">
+                        <SettingRow
+                            label="Session lifetime"
+                            hint="From JWT_EXPIRES_IN (default 7 days)"
+                        />
+                        <SettingRow
+                            label="Session source"
+                            hint="Backend-issued JWT carried by NextAuth"
+                        />
+                        <SettingRow
+                            label="Profile refresh throttle"
+                            hint="2 minutes between background refreshes"
+                        />
+                    </ul>
+                </Panel>
+
+                <Panel
                     eyebrow="Notifications"
-                    title="What you want to hear about"
+                    title="Personal preferences"
+                    description="When the /me/preferences endpoint ships, these toggles become real. Until then your notifications follow the platform-wide defaults."
                 >
                     <ul className="space-y-3 text-sm">
                         <SettingRow
                             label="Privileged action alerts"
-                            hint="Any audit-worthy event"
+                            hint="Audit-worthy events emitted to your channel"
                         />
-                        <SettingRow label="Incident pages" hint="P1/P2 only" />
+                        <SettingRow
+                            label="Incident pages"
+                            hint="P1/P2 only — never marketing"
+                        />
                         <SettingRow
                             label="Weekly digest"
                             hint="Sundays, 9am IST"
                         />
                     </ul>
                 </Panel>
-
-                <Panel eyebrow="Security" title="Your account guardrails">
-                    <ul className="space-y-3 text-sm">
-                        <SettingRow
-                            label="Re-auth window"
-                            hint="2 minutes for sensitive writes"
-                        />
-                        <SettingRow
-                            label="Device fingerprint"
-                            hint="Notify on new browser/IP"
-                        />
-                        <SettingRow
-                            label="Session length"
-                            hint="8 hours, then re-login"
-                        />
-                    </ul>
-                </Panel>
             </section>
-
-            <BackendPending
-                whatItDoes="Persist the toggles above to a user-preferences record so they survive devices. Theme already persists locally — these don't."
-                endpoints={[
-                    {
-                        method: "GET",
-                        path: "/me/preferences",
-                        purpose: "load",
-                    },
-                    {
-                        method: "PATCH",
-                        path: "/me/preferences",
-                        purpose: "update one key",
-                    },
-                ]}
-                previewSlots={["Toggle", "Toggle", "Toggle"]}
-            />
         </div>
     );
 };
 
 const SettingRow = ({ label, hint }) => (
-    <li className="flex items-center justify-between">
+    <li className="flex items-start justify-between gap-3">
         <div>
             <p
                 className="text-sm font-medium"
@@ -160,18 +154,6 @@ const SettingRow = ({ label, hint }) => (
                 {hint}
             </p>
         </div>
-        <span
-            className="inline-flex h-5 w-9 items-center rounded-full px-0.5"
-            style={{
-                backgroundColor: "var(--dashboard-border)",
-            }}
-            aria-hidden="true"
-        >
-            <span
-                className="inline-block h-4 w-4 rounded-full"
-                style={{ backgroundColor: "var(--dashboard-surface)" }}
-            />
-        </span>
     </li>
 );
 

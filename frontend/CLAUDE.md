@@ -111,7 +111,9 @@ Use a proxy route only when the browser should not call the upstream directly or
 - Dashboard pages: `src/app/dashboard/*`, with reusable dashboard widgets in `src/features/dashboard/components/*`.
 - Shared small UI controls live in `src/app/components/ui/*`.
 - Dashboard shell uses `SideBar`, `TopBar`, `PageShell`, `RoleHero`, and widget components like `Panel`, `StatTile`, `PageState`, and `BackendPending`.
-- Keep role navigation in `navConfig.js`; avoid hard-coded dashboard nav inside pages.
+- Inner/operational pages use the compact `PageHeader` (`components/ui/layout/PageHeader`) instead of the tall `RoleHero`. During the role-by-role dashboard redesign, `RoleHero` delegates to `PageHeader` for any already-migrated role (Super Admin today) so per-page swaps can land incrementally. See `docs/dashboard-redesign/`.
+- Keep role navigation in `navConfig.js`; avoid hard-coded dashboard nav inside pages. A role may declare grouped nav via `withGroups(home, groups, footer)` (the `SideBar` renders labeled sections, and falls back to a flat `items[]` for un-migrated roles; grouping is presentation-only — it never changes routes or `dashboardRoutePermissions.js`).
+- Status colors use the theme-mode-aware tokens `--dashboard-success` / `--dashboard-warning` (set in `theme/themeApplier.js`) alongside `--dashboard-danger`; prefer them over hardcoded greens/ambers.
 - Keep role styling in `features/dashboard/theme/*` and context providers.
 
 This repo uses JavaScript/JSX, not TypeScript. Do not introduce TypeScript without explicit approval.

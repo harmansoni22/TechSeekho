@@ -102,7 +102,7 @@ const BackendPending = ({
                       ))
                     : previewSlots.map((slot, idx) => (
                           <SkeletonBlock
-                              key={slot + idx}
+                              key={slot}
                               delay={idx * 0.08}
                               label={slot}
                           />

@@ -1,6 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+    cloneElement,
+    useCallback,
+    useEffect,
+    useId,
+    useMemo,
+    useState,
+} from "react";
 import RoleHero from "@/features/dashboard/components/ui/layout/PageShell/RoleHero";
 import {
     PageEmpty,
@@ -188,6 +195,7 @@ export default function AdminInstitutionsPage() {
 
                     {selected && (
                         <InstitutionDetail
+                            key={selected.id}
                             institution={selected}
                             onSaved={load}
                         />
@@ -228,21 +236,6 @@ function InstitutionDetail({ institution, onSaved }) {
     const [error, setError] = useState(null);
     const [ok, setOk] = useState(null);
     const [confirm, setConfirm] = useState(null); // "deactivate" | "activate" | null
-
-    // Reset form when the selected institution changes.
-    useEffect(() => {
-        setForm({
-            name: institution.name ?? "",
-            type: institution.type ?? "COLLEGE",
-            city: institution.city ?? "",
-            state: institution.state ?? "",
-            address: institution.address ?? "",
-            contactEmail: institution.contactEmail ?? "",
-            contactPhone: institution.contactPhone ?? "",
-        });
-        setError(null);
-        setOk(null);
-    }, [institution.id]);
 
     function set(field, value) {
         setForm((f) => ({ ...f, [field]: value }));
@@ -504,15 +497,16 @@ function Meta({ label, value }) {
 }
 
 function Field({ label, children, className = "" }) {
+    const controlId = useId();
     return (
-        <label className={`block text-sm ${className}`}>
+        <label htmlFor={controlId} className={`block text-sm ${className}`}>
             <span
                 className="text-[11px] uppercase tracking-[0.18em]"
                 style={{ color: "var(--dashboard-muted)" }}
             >
                 {label}
             </span>
-            {children}
+            {cloneElement(children, { id: controlId })}
         </label>
     );
 }
@@ -526,17 +520,27 @@ function ConfirmDialog({
     onConfirm,
     busy,
 }) {
+    useEffect(() => {
+        function onKeyDown(e) {
+            if (e.key === "Escape") onCancel();
+        }
+        document.addEventListener("keydown", onKeyDown);
+        return () => document.removeEventListener("keydown", onKeyDown);
+    }, [onCancel]);
+
     return (
-        <div
-            className="fixed inset-0 z-50 flex items-center justify-center px-4"
-            style={{ backgroundColor: "rgba(0,0,0,0.55)" }}
-            onClick={onCancel}
-            role="dialog"
-            aria-modal="true"
-        >
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+            <button
+                type="button"
+                aria-label="Dismiss dialog"
+                onClick={onCancel}
+                className="absolute inset-0 h-full w-full cursor-default border-0"
+                style={{ backgroundColor: "rgba(0,0,0,0.55)" }}
+            />
             <div
-                className="w-full max-w-md overflow-hidden rounded-xl border"
-                onClick={(e) => e.stopPropagation()}
+                className="relative z-10 w-full max-w-md overflow-hidden rounded-xl border"
+                role="dialog"
+                aria-modal="true"
                 style={{
                     borderColor: "var(--dashboard-border)",
                     backgroundColor: "var(--dashboard-surface)",

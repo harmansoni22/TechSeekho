@@ -5,8 +5,8 @@ import { useSession } from "next-auth/react";
 import { useCallback, useEffect, useState } from "react";
 import ErrorScreen from "@/app/components/error/ErrorScreen";
 import Card from "@/app/components/ui/Card";
-import LoadingSpinner from "@/app/components/ui/LoadingSpinner";
 import TopBar from "@/features/dashboard/components/ui/layout/TopBar/TopBar";
+import { DashboardOverviewSkeleton } from "@/features/dashboard/components/ui/skeletons/DashboardSkeletons";
 import Panel from "@/features/dashboard/components/ui/widgets/Panel.jsx";
 
 const StudentDashboard = () => {
@@ -51,11 +51,7 @@ const StudentDashboard = () => {
     }, [fetchDashboardData, status, router]);
 
     if (status === "loading" || loading) {
-        return (
-            <div className="flex items-center justify-center min-h-screen">
-                <LoadingSpinner />
-            </div>
-        );
+        return <DashboardOverviewSkeleton />;
     }
 
     if (error) {

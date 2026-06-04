@@ -67,5 +67,28 @@ export const applyDashboardTheme = (theme) => {
         root.style.setProperty(cssVar, expression);
     });
 
+    // Status tones (success / warning) are theme-mode aware so badges and
+    // headers track light vs dark without needing a token in every preset.
+    // `danger` already ships per-theme; these complete the set. Components
+    // reference them as var(--dashboard-success, <literal>) so this is purely
+    // additive — nothing breaks if a future refactor drops these.
+    const isDarkMode = (theme.mode || "light") === "dark";
+    root.style.setProperty(
+        "--dashboard-success",
+        isDarkMode ? "#34d399" : "#047857",
+    );
+    root.style.setProperty(
+        "--dashboard-success-soft",
+        isDarkMode ? "rgba(52, 211, 153, 0.16)" : "rgba(16, 185, 129, 0.12)",
+    );
+    root.style.setProperty(
+        "--dashboard-warning",
+        isDarkMode ? "#fbbf24" : "#b45309",
+    );
+    root.style.setProperty(
+        "--dashboard-warning-soft",
+        isDarkMode ? "rgba(251, 191, 36, 0.18)" : "rgba(245, 158, 11, 0.16)",
+    );
+
     root.dataset.dashboardMode = theme.mode || "light";
 };

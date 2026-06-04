@@ -20,7 +20,7 @@ const Panel = ({
 }) => {
     return (
         <section
-            className={`relative overflow-hidden rounded-xl border ${className}`}
+            className={`relative scrollbar-none overflow-x-hidden h-full rounded-xl border ${className}`}
             style={{
                 borderColor: "var(--dashboard-border)",
                 backgroundColor: "var(--dashboard-surface)",

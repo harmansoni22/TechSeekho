@@ -1501,10 +1501,8 @@ function SplashCursor({
     BACK_COLOR = { r: 0.5, g: 0, b: 0 },
     TRANSPARENT = true,
     INTERACTIVE_SELECTOR = "[data-fluid-interactive]",
-    INTERACTIVE_HOVER_FORCE = 1.35,
     INTERACTIVE_CLICK_FORCE = 1.85,
     INTERACTIVE_FOCUS_FORCE = 1.1,
-    INTERACTIVE_THROTTLE_MS = 120,
     BLEND_MODE = "difference",
     LAYER_OPACITY = 0.72,
     className,
@@ -2354,19 +2352,13 @@ function SplashCursor({
         let colorUpdateTimer = 0.0;
         let animationFrameId = null;
         let frameLoopStarted = false;
-        const lastInteractiveHoverTime = 0;
 
         const interactiveSelector =
             typeof INTERACTIVE_SELECTOR === "string"
                 ? INTERACTIVE_SELECTOR.trim()
                 : "";
-        const interactiveHoverForce = Number(INTERACTIVE_HOVER_FORCE) || 0;
         const interactiveClickForce = Number(INTERACTIVE_CLICK_FORCE) || 0;
         const interactiveFocusForce = Number(INTERACTIVE_FOCUS_FORCE) || 0;
-        const interactiveThrottleMs = Math.max(
-            0,
-            Number(INTERACTIVE_THROTTLE_MS) || 0,
-        );
 
         function updateFrame() {
             if (!frameLoopStarted) return;
@@ -2700,50 +2692,6 @@ function SplashCursor({
             return palette[Math.floor(Math.random() * palette.length)];
         }
 
-        function HSVtoRGB(h, s, v) {
-            let r, g, b, i, f, p, q, t;
-            i = Math.floor(h * 6);
-            f = h * 6 - i;
-            p = v * (1 - s);
-            q = v * (1 - f * s);
-            t = v * (1 - (1 - f) * s);
-            switch (i % 6) {
-                case 0:
-                    r = v;
-                    g = t;
-                    b = p;
-                    break;
-                case 1:
-                    r = q;
-                    g = v;
-                    b = p;
-                    break;
-                case 2:
-                    r = p;
-                    g = v;
-                    b = t;
-                    break;
-                case 3:
-                    r = p;
-                    g = q;
-                    b = v;
-                    break;
-                case 4:
-                    r = t;
-                    g = p;
-                    b = v;
-                    break;
-                case 5:
-                    r = v;
-                    g = p;
-                    b = q;
-                    break;
-                default:
-                    break;
-            }
-            return { r, g, b };
-        }
-
         function wrap(value, min, max) {
             const range = max - min;
             if (range === 0) return min;
@@ -3032,10 +2980,6 @@ function SplashCursor({
             }
         }
 
-        const hoverEventName = window.PointerEvent
-            ? "pointerover"
-            : "mouseover";
-
         window.addEventListener("mousedown", handleMouseDown);
         document.body.addEventListener("mousemove", handleFirstMouseMove);
         window.addEventListener("mousemove", handleMouseMove);
@@ -3095,10 +3039,8 @@ function SplashCursor({
         BACK_COLOR,
         TRANSPARENT,
         INTERACTIVE_SELECTOR,
-        INTERACTIVE_HOVER_FORCE,
         INTERACTIVE_CLICK_FORCE,
         INTERACTIVE_FOCUS_FORCE,
-        INTERACTIVE_THROTTLE_MS,
     ]);
 
     return (

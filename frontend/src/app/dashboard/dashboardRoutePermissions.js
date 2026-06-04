@@ -33,9 +33,16 @@ const dashboardRoutePermissions = {
     "/dashboard": ALL_DASHBOARD_USERS,
 
     // ────────────── SUPER_ADMIN ──────────────
+    // Note: dynamic detail routes such as `/dashboard/super-admin/institutions/[id]`
+    // inherit their permission via the longest-prefix match in
+    // resolveDashboardAuthz.js — no separate entry needed for each child.
     "/dashboard/super-admin": ["SUPER_ADMIN"],
     "/dashboard/super-admin/institutions": ["SUPER_ADMIN"],
+    "/dashboard/super-admin/institution-lifecycle": ["SUPER_ADMIN"],
     "/dashboard/super-admin/admins": ["SUPER_ADMIN"],
+    "/dashboard/super-admin/admin-management": ["SUPER_ADMIN"],
+    "/dashboard/super-admin/trainer-management": ["SUPER_ADMIN"],
+    "/dashboard/super-admin/users": ["SUPER_ADMIN"],
     "/dashboard/super-admin/role-management": ["SUPER_ADMIN"],
     "/dashboard/super-admin/platform-config": ["SUPER_ADMIN"],
     "/dashboard/super-admin/platform-analytics": ["SUPER_ADMIN"],
@@ -47,9 +54,14 @@ const dashboardRoutePermissions = {
     // ────────────── ADMIN ──────────────
     "/dashboard/admin": ["ADMIN"],
     "/dashboard/admin/institutions": ["ADMIN"],
+    "/dashboard/admin/students": ["ADMIN"],
+    "/dashboard/admin/trainers": ["ADMIN"],
+    "/dashboard/admin/batches": ["ADMIN"],
+    "/dashboard/admin/attendance": ["ADMIN"],
+    "/dashboard/admin/assignments": ["ADMIN"],
+    "/dashboard/admin/announcements": ["ADMIN"],
     "/dashboard/admin/analytics": ["ADMIN"],
     "/dashboard/admin/reports": ["ADMIN"],
-    "/dashboard/admin/community-moderation": ["ADMIN"],
     "/dashboard/admin/profile": ["ADMIN"],
     "/dashboard/admin/settings": ["ADMIN"],
     "/dashboard/admin/legal": ["ADMIN"],
@@ -69,10 +81,13 @@ const dashboardRoutePermissions = {
     "/dashboard/coordinator/legal": ["INSTITUTION_COORDINATOR"],
 
     // ────────────── TRAINER ──────────────
+    // Dynamic detail routes (`/batches/[id]`, `/assignments/[id]`) inherit
+    // permission via longest-prefix match in resolveDashboardAuthz.js.
     "/dashboard/trainer": ["TRAINER"],
     "/dashboard/trainer/course": ["TRAINER"],
     "/dashboard/trainer/modules": ["TRAINER"],
     "/dashboard/trainer/batches": ["TRAINER"],
+    "/dashboard/trainer/attendance": ["TRAINER"],
     "/dashboard/trainer/assignments": ["TRAINER"],
     "/dashboard/trainer/submissions": ["TRAINER"],
     "/dashboard/trainer/ai-companion": ["TRAINER"],

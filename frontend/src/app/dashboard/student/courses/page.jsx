@@ -5,8 +5,8 @@ import { useSession } from "next-auth/react";
 import { useCallback, useEffect, useState } from "react";
 import ErrorScreen from "@/app/components/error/ErrorScreen";
 import Card from "@/app/components/ui/Card";
-import LoadingSpinner from "@/app/components/ui/LoadingSpinner";
 import TopBar from "@/features/dashboard/components/ui/layout/TopBar/TopBar";
+import { CoursesSkeleton } from "@/features/dashboard/components/ui/skeletons/DashboardSkeletons";
 
 const StudentCourses = () => {
     const { data: session, status } = useSession();
@@ -50,11 +50,7 @@ const StudentCourses = () => {
     }, [fetchCourses, status, router]);
 
     if (status === "loading" || loading) {
-        return (
-            <div className="flex items-center justify-center min-h-screen">
-                <LoadingSpinner />
-            </div>
-        );
+        return <CoursesSkeleton />;
     }
 
     if (error) {

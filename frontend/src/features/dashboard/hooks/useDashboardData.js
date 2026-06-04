@@ -60,7 +60,7 @@ export function useDashboardData() {
         return () => {
             cancelled = true;
         };
-    }, []);
+    }, [router.replace]);
 
     const view = useMemo(() => {
         if (!data) {

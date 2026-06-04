@@ -50,52 +50,102 @@ const ICONS = {
     stack: "M12 3l9 5-9 5-9-5 9-5z M3 13l9 5 9-5 M3 18l9 5 9-5",
 };
 
+// Roles may declare grouped navigation. `withGroups` keeps a flat `items`
+// array in sync (derived from the groups) so existing consumers that read
+// `.items` — the Super Admin overview's route→icon map and the SideBar's flat
+// fallback for un-migrated roles — keep working unchanged. Migrate a role by
+// switching its value to `withGroups(home, groups, footer)`; leave the others
+// as flat `{ home, items, footer }` until their turn.
+function withGroups(home, groups, footer) {
+    return {
+        home,
+        groups,
+        items: groups.flatMap((group) => group.items),
+        footer,
+    };
+}
+
 export const NAV_CONFIG = {
-    SUPER_ADMIN: {
-        home: "/dashboard/super-admin",
-        items: [
+    SUPER_ADMIN: withGroups(
+        "/dashboard/super-admin",
+        [
             {
-                href: "/dashboard/super-admin",
-                label: "Overview",
-                icon: ICONS.home,
+                label: "Governance",
+                items: [
+                    {
+                        href: "/dashboard/super-admin",
+                        label: "Overview",
+                        icon: ICONS.home,
+                    },
+                    {
+                        href: "/dashboard/super-admin/institutions",
+                        label: "Institutions",
+                        icon: ICONS.building,
+                    },
+                    {
+                        href: "/dashboard/super-admin/institution-lifecycle",
+                        label: "Institution Lifecycle",
+                        icon: ICONS.flag,
+                    },
+                ],
             },
             {
-                href: "/dashboard/super-admin/institutions",
-                label: "Institutions",
-                icon: ICONS.building,
+                label: "People & Access",
+                items: [
+                    {
+                        href: "/dashboard/super-admin/admins",
+                        label: "Admins",
+                        icon: ICONS.users,
+                    },
+                    {
+                        href: "/dashboard/super-admin/users",
+                        label: "User Directory",
+                        icon: ICONS.user,
+                    },
+                    {
+                        href: "/dashboard/super-admin/admin-management",
+                        label: "Admin Management",
+                        icon: ICONS.shield,
+                    },
+                    {
+                        href: "/dashboard/super-admin/trainer-management",
+                        label: "Trainer Management",
+                        icon: ICONS.gauge,
+                    },
+                    {
+                        href: "/dashboard/super-admin/role-management",
+                        label: "Role Management",
+                        icon: ICONS.shield,
+                    },
+                ],
             },
             {
-                href: "/dashboard/super-admin/admins",
-                label: "Admins",
-                icon: ICONS.users,
-            },
-            {
-                href: "/dashboard/super-admin/role-management",
-                label: "Role Management",
-                icon: ICONS.shield,
-            },
-            {
-                href: "/dashboard/super-admin/platform-analytics",
-                label: "Platform Analytics",
-                icon: ICONS.chart,
-            },
-            {
-                href: "/dashboard/super-admin/platform-config",
-                label: "Platform Config",
-                icon: ICONS.sliders,
-            },
-            {
-                href: "/dashboard/super-admin/audit-logs",
-                label: "Audit Logs",
-                icon: ICONS.scroll,
-            },
-            {
-                href: "/dashboard/super-admin/legal",
-                label: "Legal & Policies",
-                icon: ICONS.scale,
+                label: "Platform",
+                items: [
+                    {
+                        href: "/dashboard/super-admin/platform-analytics",
+                        label: "Platform Analytics",
+                        icon: ICONS.chart,
+                    },
+                    {
+                        href: "/dashboard/super-admin/platform-config",
+                        label: "Platform Config",
+                        icon: ICONS.sliders,
+                    },
+                    {
+                        href: "/dashboard/super-admin/audit-logs",
+                        label: "Audit Logs",
+                        icon: ICONS.scroll,
+                    },
+                    {
+                        href: "/dashboard/super-admin/legal",
+                        label: "Legal & Policies",
+                        icon: ICONS.scale,
+                    },
+                ],
             },
         ],
-        footer: [
+        [
             {
                 href: "/dashboard/super-admin/profile",
                 label: "Profile",
@@ -107,7 +157,7 @@ export const NAV_CONFIG = {
                 icon: ICONS.gear,
             },
         ],
-    },
+    ),
 
     ADMIN: {
         home: "/dashboard/admin",
@@ -119,6 +169,36 @@ export const NAV_CONFIG = {
                 icon: ICONS.building,
             },
             {
+                href: "/dashboard/admin/students",
+                label: "Students",
+                icon: ICONS.users,
+            },
+            {
+                href: "/dashboard/admin/trainers",
+                label: "Trainers",
+                icon: ICONS.users,
+            },
+            {
+                href: "/dashboard/admin/batches",
+                label: "Batches",
+                icon: ICONS.stack,
+            },
+            {
+                href: "/dashboard/admin/attendance",
+                label: "Attendance",
+                icon: ICONS.gauge,
+            },
+            {
+                href: "/dashboard/admin/assignments",
+                label: "Assignments",
+                icon: ICONS.clipboard,
+            },
+            {
+                href: "/dashboard/admin/announcements",
+                label: "Announcements",
+                icon: ICONS.megaphone,
+            },
+            {
                 href: "/dashboard/admin/analytics",
                 label: "Analytics",
                 icon: ICONS.chart,
@@ -126,12 +206,7 @@ export const NAV_CONFIG = {
             {
                 href: "/dashboard/admin/reports",
                 label: "Reports",
-                icon: ICONS.clipboard,
-            },
-            {
-                href: "/dashboard/admin/community-moderation",
-                label: "Community",
-                icon: ICONS.flag,
+                icon: ICONS.scroll,
             },
             {
                 href: "/dashboard/admin/legal",
@@ -226,6 +301,11 @@ export const NAV_CONFIG = {
         items: [
             { href: "/dashboard/trainer", label: "Overview", icon: ICONS.home },
             {
+                href: "/dashboard/trainer/batches",
+                label: "Batches",
+                icon: ICONS.stack,
+            },
+            {
                 href: "/dashboard/trainer/course",
                 label: "My Courses",
                 icon: ICONS.book,
@@ -236,9 +316,9 @@ export const NAV_CONFIG = {
                 icon: ICONS.puzzle,
             },
             {
-                href: "/dashboard/trainer/batches",
-                label: "Batches",
-                icon: ICONS.stack,
+                href: "/dashboard/trainer/attendance",
+                label: "Attendance",
+                icon: ICONS.gauge,
             },
             {
                 href: "/dashboard/trainer/assignments",
@@ -251,14 +331,14 @@ export const NAV_CONFIG = {
                 icon: ICONS.scroll,
             },
             {
+                href: "/dashboard/trainer/community",
+                label: "Announcements",
+                icon: ICONS.megaphone,
+            },
+            {
                 href: "/dashboard/trainer/ai-companion",
                 label: "AI Companion",
                 icon: ICONS.cpu,
-            },
-            {
-                href: "/dashboard/trainer/community",
-                label: "Community",
-                icon: ICONS.chat,
             },
             {
                 href: "/dashboard/trainer/legal",

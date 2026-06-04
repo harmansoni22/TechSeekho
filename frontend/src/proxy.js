@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
 
 /**
- * Host-aware middleware for per-role subdomain deploys.
+ * Host-aware proxy for per-role subdomain deploys.
+ *
+ * (Formerly `middleware.js` — renamed to `proxy.js` for the Next.js 16
+ * `proxy` file convention. Behavior is unchanged.)
  *
  * Behavior is determined entirely by env vars; no env vars set ⇒ no-op
  * (existing single-host deploys keep working unchanged).
@@ -22,7 +25,7 @@ import { NextResponse } from "next/server";
  *     "enforce": rewrites `/` → rolePath; blocks any /dashboard/{otherRole}
  *                path with a 404.
  *
- * The middleware deliberately does NOT call into NextAuth here. Per-role
+ * The proxy deliberately does NOT call into NextAuth here. Per-role
  * access control still goes through DashboardAuthGate + the backend's RBAC
  * gates. This file is only responsible for keeping the role-scoped
  * subdomains visually and structurally isolated.
@@ -43,7 +46,7 @@ function parseHostsMap(raw) {
     } catch {
         // Fall through to empty map; surface a clear warning at runtime.
         console.warn(
-            "[middleware] DASHBOARD_SUBDOMAIN_HOSTS is set but is not valid JSON; ignoring.",
+            "[proxy] DASHBOARD_SUBDOMAIN_HOSTS is set but is not valid JSON; ignoring.",
         );
     }
     return {};
@@ -56,7 +59,7 @@ function hostPrefix(hostname) {
     return first || null;
 }
 
-export function middleware(request) {
+export function proxy(request) {
     if (!ENABLED) return NextResponse.next();
 
     const url = request.nextUrl;
@@ -77,7 +80,7 @@ export function middleware(request) {
             return NextResponse.rewrite(rewritten);
         }
         console.info(
-            `[middleware][log] would rewrite "/" → "${rolePath}" on subdomain "${prefix}".`,
+            `[proxy][log] would rewrite "/" → "${rolePath}" on subdomain "${prefix}".`,
         );
         return NextResponse.next();
     }
@@ -91,7 +94,7 @@ export function middleware(request) {
                 return new NextResponse("Not found", { status: 404 });
             }
             console.info(
-                `[middleware][log] would 404 "${pathname}" on subdomain "${prefix}" (only "${rolePath}" allowed).`,
+                `[proxy][log] would 404 "${pathname}" on subdomain "${prefix}" (only "${rolePath}" allowed).`,
             );
         }
     }

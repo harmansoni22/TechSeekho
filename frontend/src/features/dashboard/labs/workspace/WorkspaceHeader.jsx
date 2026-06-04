@@ -11,6 +11,10 @@ import WorkspaceButton from "./WorkspaceButton.jsx";
  *
  * `hasUnsavedChanges` flips the status dot from green to amber, which is the
  * only piece of state the parent passes us — everything else is plain text.
+ *
+ * `extras` is an optional React node rendered between Save and the console
+ * toggle. The Web lab uses this to mount the LibrariesPicker; the React lab
+ * leaves it null.
  */
 const WorkspaceHeader = ({
     title,
@@ -24,6 +28,7 @@ const WorkspaceHeader = ({
     onSave,
     onConsoleToggle,
     consoleOpen,
+    extras,
 }) => (
     <header
         className="border-b px-4 py-3"
@@ -85,6 +90,7 @@ const WorkspaceHeader = ({
                 <WorkspaceButton icon={Save} onClick={onSave} variant="accent">
                     Save
                 </WorkspaceButton>
+                {extras}
                 {onConsoleToggle ? (
                     <WorkspaceButton
                         icon={PanelBottom}

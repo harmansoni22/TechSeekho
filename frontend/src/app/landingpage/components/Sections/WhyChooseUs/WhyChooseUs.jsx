@@ -7,7 +7,6 @@ import {
 } from "@/app/landingpage/config/landingContent";
 import BorderGlow from "../../Effects/BorderGlow";
 import ParallaxSpeed from "../../Effects/ParallaxSpeed";
-import SpotlightCard from "../../Effects/SpotlightCard";
 import GradientText from "../../Effects/TextEffects/GradientText";
 
 const WhyChooseUs = () => {

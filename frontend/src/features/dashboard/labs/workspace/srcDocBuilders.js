@@ -12,10 +12,23 @@
 
 import { fileCode } from "./workspaceUtils.js";
 
-export function buildStaticDocumentFromFiles(files) {
+/**
+ * Build the iframe srcDoc for vanilla Web labs.
+ *
+ * `libraries` is an array of resolved library objects from LAB_LIBRARIES
+ * (each with `head: string[]` and `body: string[]` arrays of HTML tags).
+ * Library `<head>` tags load BEFORE the inlined user CSS so user styles can
+ * override library defaults. Library `<body>` scripts load AFTER the user's
+ * inline JS so global helpers (jQuery, Bootstrap JS) are still in scope
+ * when user code references them.
+ */
+export function buildStaticDocumentFromFiles(files, libraries = []) {
     const html = fileCode(files["/index.html"]);
     const css = fileCode(files["/styles.css"]);
     const js = fileCode(files["/script.js"]);
+
+    const libHeadTags = libraries.flatMap((lib) => lib?.head ?? []).join("\n");
+    const libBodyTags = libraries.flatMap((lib) => lib?.body ?? []).join("\n");
 
     const inlineCss = `<style data-skill-labs="styles.css">${css}</style>`;
     // Wrapping user JS in `new Function(...)` instead of inline script means
@@ -33,10 +46,16 @@ export function buildStaticDocumentFromFiles(files) {
                 "",
             );
         return withoutExternalAssets
-            .replace("</head>", `${inlineCss}</head>`)
-            .replace("</body>", `${inlineJs}</body>`);
+            .replace(
+                "</head>",
+                `${libHeadTags ? `${libHeadTags}\n` : ""}${inlineCss}</head>`,
+            )
+            .replace(
+                "</body>",
+                `${inlineJs}${libBodyTags ? `\n${libBodyTags}` : ""}</body>`,
+            );
     }
-    return `<!doctype html><html><head><meta charset="utf-8">${inlineCss}</head><body>${html}${inlineJs}</body></html>`;
+    return `<!doctype html><html><head><meta charset="utf-8">${libHeadTags}${inlineCss}</head><body>${html}${inlineJs}${libBodyTags}</body></html>`;
 }
 
 /**
@@ -56,9 +75,15 @@ export function buildReactSrcDoc({ css, jsx }) {
 </head>
 <body>
 <div id="root"></div>
-<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<!--
+  React lab runs entirely inside a sandboxed iframe.
+  We intentionally avoid external CDNs here to keep iframe network/CSP predictable.
+  Vendor files must exist in Next.js public/ and will be served by the host app.
+  (See frontend/public/vendor-react/README.txt)
+-->
+<script crossorigin src="/vendor-react/react.production.min.js"></script>
+<script crossorigin src="/vendor-react/react-dom.production.min.js"></script>
+<script src="/vendor-react/babel.min.js"></script>
 <script>
 window.addEventListener("error", (e) => {
   const el = document.createElement("pre");
@@ -70,7 +95,7 @@ window.addEventListener("DOMContentLoaded", () => {
   if (!window.React || !window.ReactDOM || !window.Babel) {
     const el = document.createElement("pre");
     el.className = "lab-runtime-error";
-    el.textContent = "Failed to load React or Babel from unpkg. Check the iframe's network access.";
+    el.textContent = "Failed to load React/ReactDOM/Babel vendor scripts. Ensure /public/vendor-react contains react.production.min.js, react-dom.production.min.js, and babel.min.js.";
     document.body.appendChild(el);
     return;
   }

@@ -92,11 +92,14 @@ describe("resolveAllowedRolesForPath", () => {
                 resolveAllowedRolesForPath("/dashboard/student/jobs"),
             ).toEqual(["STUDENT"]);
         });
-        it("ADMIN owns /dashboard/admin/community-moderation", () => {
+        it("ADMIN owns /dashboard/admin/students", () => {
             expect(
-                resolveAllowedRolesForPath(
-                    "/dashboard/admin/community-moderation",
-                ),
+                resolveAllowedRolesForPath("/dashboard/admin/students"),
+            ).toEqual(["ADMIN"]);
+        });
+        it("ADMIN owns /dashboard/admin/batches", () => {
+            expect(
+                resolveAllowedRolesForPath("/dashboard/admin/batches"),
             ).toEqual(["ADMIN"]);
         });
     });

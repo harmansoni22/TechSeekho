@@ -4,8 +4,8 @@ import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useCallback, useEffect, useState } from "react";
 import ErrorScreen from "@/app/components/error/ErrorScreen";
-import LoadingSpinner from "@/app/components/ui/LoadingSpinner";
 import TopBar from "@/features/dashboard/components/ui/layout/TopBar/TopBar";
+import { ProfileSkeleton } from "@/features/dashboard/components/ui/skeletons/DashboardSkeletons";
 import Panel from "@/features/dashboard/components/ui/widgets/Panel.jsx";
 
 const StudentProfilePage = () => {
@@ -47,11 +47,7 @@ const StudentProfilePage = () => {
     }, [fetchProfile, status, router]);
 
     if (status === "loading" || loading) {
-        return (
-            <div className="flex items-center justify-center min-h-screen">
-                <LoadingSpinner />
-            </div>
-        );
+        return <ProfileSkeleton />;
     }
 
     if (error || !data) {
