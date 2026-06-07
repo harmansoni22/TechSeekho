@@ -2,14 +2,14 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { fetchPlatformAnalytics } from "@/features/dashboard/api/superAdmin.api";
-import RoleHero from "@/features/dashboard/components/ui/layout/PageShell/RoleHero";
 import {
-    PageEmpty,
-    PageError,
-    PageLoading,
-} from "@/features/dashboard/components/ui/widgets/PageState";
-import Panel from "@/features/dashboard/components/ui/widgets/Panel";
-import StatTile from "@/features/dashboard/components/ui/widgets/StatTile";
+    SaPageHeader,
+    SaPanel,
+    SaStatTile,
+    SaPageLoading,
+    SaPageError,
+    SaPageEmpty,
+} from "@/features/dashboard/super-admin/components";
 
 /**
  * SUPER_ADMIN — Platform Analytics.
@@ -85,7 +85,7 @@ const PlatformAnalyticsPage = () => {
 
     return (
         <div className="space-y-8">
-            <RoleHero
+            <SaPageHeader
                 eyebrow="Insight · Platform Analytics"
                 title="Trends, not totals."
                 subtitle="Snapshot metrics live on the overview. Here we read the movement — daily activity, attendance discipline, submission velocity, institutional growth."
@@ -121,32 +121,32 @@ const PlatformAnalyticsPage = () => {
             />
 
             {loading ? (
-                <PageLoading label="Loading analytics" />
+                <SaPageLoading label="Loading analytics" />
             ) : error ? (
-                <PageError
+                <SaPageError
                     title="Could not load analytics"
                     message={error}
                     onRetry={load}
                 />
             ) : !data ? (
-                <PageEmpty
+                <SaPageEmpty
                     title="No analytics yet"
                     description="Operational telemetry will appear here as it accrues."
                 />
             ) : (
                 <>
                     <section className="dash-reveal dash-reveal-2 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                        <StatTile
+                        <SaStatTile
                             label="New users"
                             value={data.totals?.newUsers ?? 0}
                             footnote={`Over the last ${data.days} days`}
                         />
-                        <StatTile
+                        <SaStatTile
                             label="New institutions"
                             value={data.totals?.newInstitutions ?? 0}
                             footnote="Chartered in window"
                         />
-                        <StatTile
+                        <SaStatTile
                             label="Submission completion"
                             value={
                                 data.rates?.submissionCompletion == null
@@ -155,7 +155,7 @@ const PlatformAnalyticsPage = () => {
                             }
                             footnote="Reviewed ÷ submitted"
                         />
-                        <StatTile
+                        <SaStatTile
                             label="Attendance presence"
                             value={
                                 data.rates?.attendancePresence == null
@@ -168,7 +168,7 @@ const PlatformAnalyticsPage = () => {
 
                     <section className="dash-reveal dash-reveal-3 grid gap-6 lg:grid-cols-2">
                         {SERIES_DEFS.map((s) => (
-                            <Panel
+                            <SaPanel
                                 key={s.key}
                                 eyebrow="Series"
                                 title={s.label}
@@ -178,12 +178,12 @@ const PlatformAnalyticsPage = () => {
                                     series={data.series?.[s.key] ?? []}
                                     total={data.totals?.[s.key] ?? 0}
                                 />
-                            </Panel>
+                            </SaPanel>
                         ))}
                     </section>
 
                     <section className="grid gap-6 lg:grid-cols-5">
-                        <Panel
+                        <SaPanel
                             eyebrow="Distribution"
                             title="Assessments by status"
                             className="lg:col-span-2"
@@ -228,9 +228,9 @@ const PlatformAnalyticsPage = () => {
                                     </p>
                                 )}
                             </ul>
-                        </Panel>
+                        </SaPanel>
 
-                        <Panel
+                        <SaPanel
                             eyebrow="Network"
                             title="Top institutions by engagement"
                             description="Sum of batch + member counts."
@@ -273,10 +273,10 @@ const PlatformAnalyticsPage = () => {
                                 </ul>
                             ) : (
                                 <div className="px-6 py-8">
-                                    <PageEmpty title="No institutional engagement to rank yet" />
+                                    <SaPageEmpty title="No institutional engagement to rank yet" />
                                 </div>
                             )}
-                        </Panel>
+                        </SaPanel>
                     </section>
                 </>
             )}

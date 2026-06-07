@@ -70,18 +70,17 @@ export const NAV_CONFIG = {
         "/dashboard/super-admin",
         [
             {
-                label: "Governance",
                 items: [
                     {
                         href: "/dashboard/super-admin",
                         label: "Overview",
                         icon: ICONS.home,
                     },
-                    {
-                        href: "/dashboard/super-admin/institutions",
-                        label: "Institutions",
-                        icon: ICONS.building,
-                    },
+                ]
+            },
+            {
+                label: "Governance",
+                items: [
                     {
                         href: "/dashboard/super-admin/institution-lifecycle",
                         label: "Institution Lifecycle",
@@ -90,7 +89,32 @@ export const NAV_CONFIG = {
                 ],
             },
             {
-                label: "People & Access",
+                label: "Institutions",
+                items: [
+                    {
+                        href: "/dashboard/super-admin/institutions",
+                        label: "Institutions",
+                        icon: ICONS.building,
+                    },
+                ],
+            },
+            {
+                label: "Roles & Access",
+                items: [
+                    {
+                        href: "/dashboard/super-admin/role-management",
+                        label: "Role Management",
+                        icon: ICONS.shield,
+                    },
+                    {
+                        href: "/dashboard/super-admin/users",
+                        label: "User Directory",
+                        icon: ICONS.user,
+                    },
+                ],
+            },
+            {
+                label: "Admins",
                 items: [
                     {
                         href: "/dashboard/super-admin/admins",
@@ -98,40 +122,35 @@ export const NAV_CONFIG = {
                         icon: ICONS.users,
                     },
                     {
-                        href: "/dashboard/super-admin/users",
-                        label: "User Directory",
-                        icon: ICONS.user,
-                    },
-                    {
                         href: "/dashboard/super-admin/admin-management",
                         label: "Admin Management",
-                        icon: ICONS.shield,
-                    },
-                    {
-                        href: "/dashboard/super-admin/trainer-management",
-                        label: "Trainer Management",
-                        icon: ICONS.gauge,
-                    },
-                    {
-                        href: "/dashboard/super-admin/role-management",
-                        label: "Role Management",
                         icon: ICONS.shield,
                     },
                 ],
             },
             {
-                label: "Platform",
+                label: "Trainers",
+                items: [
+                    {
+                        href: "/dashboard/super-admin/trainer-management",
+                        label: "Trainer Management",
+                        icon: ICONS.gauge,
+                    },
+                ],
+            },
+            {
+                label: "Analytics",
                 items: [
                     {
                         href: "/dashboard/super-admin/platform-analytics",
                         label: "Platform Analytics",
                         icon: ICONS.chart,
                     },
-                    {
-                        href: "/dashboard/super-admin/platform-config",
-                        label: "Platform Config",
-                        icon: ICONS.sliders,
-                    },
+                ],
+            },
+            {
+                label: "Settings",
+                items: [
                     {
                         href: "/dashboard/super-admin/audit-logs",
                         label: "Audit Logs",
@@ -142,6 +161,16 @@ export const NAV_CONFIG = {
                         label: "Legal & Policies",
                         icon: ICONS.scale,
                     },
+                    {
+                        href: "/dashboard/super-admin/platform-config",
+                        label: "Platform Config",
+                        icon: ICONS.sliders,
+                    },
+                    {
+                        href: "/dashboard/super-admin/settings",
+                        label: "Settings",
+                        icon: ICONS.gear,
+                    },
                 ],
             },
         ],
@@ -150,11 +179,6 @@ export const NAV_CONFIG = {
                 href: "/dashboard/super-admin/profile",
                 label: "Profile",
                 icon: ICONS.user,
-            },
-            {
-                href: "/dashboard/super-admin/settings",
-                label: "Settings",
-                icon: ICONS.gear,
             },
         ],
     ),
@@ -360,89 +384,122 @@ export const NAV_CONFIG = {
         ],
     },
 
-    STUDENT: {
-        home: "/dashboard/student",
-        items: [
-            { href: "/dashboard/student", label: "Overview", icon: ICONS.home },
+    STUDENT: withGroups(
+        "/dashboard/student",
+        [
             {
-                href: "/dashboard/student/courses",
-                label: "My Courses",
-                icon: ICONS.book,
+                items: [
+                    {
+                        href: "/dashboard/student",
+                        label: "Overview",
+                        icon: ICONS.home,
+                    },
+                ],
             },
             {
-                href: "/dashboard/student/learning",
-                label: "Active Learning",
-                icon: ICONS.play,
+                label: "Learning",
+                items: [
+                    {
+                        href: "/dashboard/student/courses",
+                        label: "My Courses",
+                        icon: ICONS.book,
+                    },
+                    {
+                        href: "/dashboard/student/learning",
+                        label: "Active Learning",
+                        icon: ICONS.play,
+                    },
+                    {
+                        href: "/dashboard/student/skill-labs",
+                        label: "Skill Labs",
+                        icon: ICONS.flask,
+                    },
+                    {
+                        href: "/dashboard/student/assignments",
+                        label: "Assignments",
+                        icon: ICONS.clipboard,
+                    },
+                ],
             },
             {
-                href: "/dashboard/student/skill-labs",
-                label: "Skill Labs",
-                icon: ICONS.flask,
+                label: "Progress & Rewards",
+                items: [
+                    {
+                        href: "/dashboard/student/certifications",
+                        label: "Certifications",
+                        icon: ICONS.medal,
+                    },
+                    {
+                        href: "/dashboard/student/leaderboard",
+                        label: "Leaderboard",
+                        icon: ICONS.star,
+                    },
+                    {
+                        href: "/dashboard/student/rewards",
+                        label: "Rewards",
+                        icon: ICONS.rocket,
+                    },
+                    {
+                        href: "/dashboard/student/analytics",
+                        label: "My Analytics",
+                        icon: ICONS.chart,
+                    },
+                ],
             },
             {
-                href: "/dashboard/student/assignments",
-                label: "Assignments",
-                icon: ICONS.clipboard,
+                label: "Community & Support",
+                items: [
+                    {
+                        href: "/dashboard/student/ai-companion",
+                        label: "AI Companion",
+                        icon: ICONS.cpu,
+                    },
+                    {
+                        href: "/dashboard/student/mentors",
+                        label: "Mentors",
+                        icon: ICONS.users,
+                    },
+                    {
+                        href: "/dashboard/student/community",
+                        label: "Community",
+                        icon: ICONS.chat,
+                    },
+                ],
             },
             {
-                href: "/dashboard/student/ai-companion",
-                label: "AI Companion",
-                icon: ICONS.cpu,
+                label: "Career",
+                items: [
+                    {
+                        href: "/dashboard/student/jobs",
+                        label: "Job Board",
+                        icon: ICONS.briefcase,
+                    },
+                ],
             },
             {
-                href: "/dashboard/student/certifications",
-                label: "Certifications",
-                icon: ICONS.medal,
-            },
-            {
-                href: "/dashboard/student/leaderboard",
-                label: "Leaderboard",
-                icon: ICONS.star,
-            },
-            {
-                href: "/dashboard/student/mentors",
-                label: "Mentors",
-                icon: ICONS.users,
-            },
-            {
-                href: "/dashboard/student/jobs",
-                label: "Job Board",
-                icon: ICONS.briefcase,
-            },
-            {
-                href: "/dashboard/student/community",
-                label: "Community",
-                icon: ICONS.chat,
-            },
-            {
-                href: "/dashboard/student/analytics",
-                label: "My Analytics",
-                icon: ICONS.chart,
-            },
-            {
-                href: "/dashboard/student/rewards",
-                label: "Rewards",
-                icon: ICONS.rocket,
-            },
-            {
-                href: "/dashboard/student/legal",
-                label: "Legal",
-                icon: ICONS.scale,
-            },
-        ],
-        footer: [
-            {
-                href: "/dashboard/student/profile",
-                label: "Profile",
-                icon: ICONS.user,
-            },
+                label: "Settings",
+                items: [
+                    {
+                        href: "/dashboard/student/legal",
+                        label: "Legal",
+                        icon: ICONS.scale,
+                    },
             {
                 href: "/dashboard/student/settings",
                 label: "Settings",
                 icon: ICONS.gear,
             },
+                ],
+            },
         ],
-    },
+        [
+            {
+                href: "/dashboard/student/profile",
+                label: "Profile",
+                icon: ICONS.user,
+            }
+        ],
+    ),
 };
 
 const EMPTY_NAV = { home: "/dashboard", items: [], footer: [] };

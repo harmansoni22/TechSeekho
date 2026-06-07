@@ -4,7 +4,7 @@ Read the monorepo-level [../CLAUDE.md](../CLAUDE.md) first. This file is the fro
 
 ## What this workspace owns
 
-The frontend is a Next.js 16 App Router application. It contains both the public TechSeekho site and the authenticated multi-role operations dashboard. Auth is handled by NextAuth v4, but backend-issued JWTs are the token used for real API access.
+The frontend is a Next.js 16 App Router application. It contains both the public TechSeekho site and the authenticated multi-role operations dashboard. Auth is handled by NextAuth v5 (Auth.js) — `src/auth.js` calls `NextAuth(...)` and exports `{ handlers, auth, signIn, signOut }`; server code uses `auth()` (not `getServerSession`) — but backend-issued JWTs are the token used for real API access.
 
 The public landing pages live under `src/app/landingpage`. The operational app lives under `src/app/dashboard` and `src/features/dashboard`.
 

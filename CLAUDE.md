@@ -85,14 +85,14 @@ Pulled and tightened from `.agent.md` and `README.md`. If a code change contradi
 | Layer            | Choice                                                                 |
 |------------------|------------------------------------------------------------------------|
 | Monorepo         | npm workspaces + Turborepo 2.x                                         |
-| Frontend         | Next.js 16 App Router · React 19 · Tailwind CSS v4 · GSAP · Framer Motion · Lenis · `motion` · MUI · NextAuth v4 |
+| Frontend         | Next.js 16 App Router · React 19 · Tailwind CSS v4 · GSAP · Framer Motion · Lenis · `motion` · MUI · NextAuth v5 (Auth.js) |
 | Backend runtime  | Node.js ESM                                                            |
 | HTTP server      | Express 5                                                              |
 | Primary DB       | PostgreSQL via Prisma 7 (`@prisma/client` + `@prisma/adapter-pg`)      |
 | Cache / rate-lim | Redis via `ioredis` (optional — in-memory fallback)                    |
 | Secondary DB     | MongoDB via Mongoose (optional, soft-fails at boot)                    |
 | Auth on backend  | JWT (`jsonwebtoken`) + bcrypt + HMAC-SHA256 OTPs                       |
-| Auth on frontend | NextAuth v4 (Credentials + Google + GitHub) — backend issues the JWT   |
+| Auth on frontend | NextAuth v5 / Auth.js (Credentials + Google + GitHub) — backend issues the JWT |
 | Validation       | Zod (centralized schemas in `backend/src/validators/schemas.js`)       |
 | AI               | `@huggingface/inference` → Qwen2.5-7B-Instruct on `together`           |
 | Lint / format    | Biome (each workspace has its own config)                              |

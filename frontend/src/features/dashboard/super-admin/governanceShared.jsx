@@ -26,13 +26,39 @@ export function formatDate(value) {
 
 // Lifecycle palette covers both user (ACTIVE/INACTIVE/SUSPENDED/TERMINATED)
 // and institution (ACTIVE/SUSPENDED/ARCHIVED/PENDING_APPROVAL) states.
+//
+// Token-driven, NOT hardcoded: the fg colors pull from the theme-aware
+// --dashboard-success/-warning/-danger/-muted + --role-accent tokens that
+// themeApplier publishes per theme. The previous static light-mode hex
+// (#047857, #475569, …) failed WCAG AA badly on the default dark theme (every
+// badge < 3.4:1; ARCHIVED ~1.65:1). Literal fallbacks keep it safe if a token
+// is ever missing. INACTIVE/ARCHIVED have no semantic token, so they share the
+// neutral --dashboard-muted (both mean "no action required").
 const LIFECYCLE_TONES = {
-    ACTIVE: { bg: "rgba(16, 185, 129, 0.12)", fg: "#047857" },
-    INACTIVE: { bg: "rgba(148, 163, 184, 0.18)", fg: "#475569" },
-    SUSPENDED: { bg: "rgba(245, 158, 11, 0.16)", fg: "#b45309" },
-    TERMINATED: { bg: "rgba(220, 38, 38, 0.12)", fg: "#b91c1c" },
-    ARCHIVED: { bg: "rgba(100, 116, 139, 0.18)", fg: "#334155" },
-    PENDING_APPROVAL: { bg: "rgba(59, 130, 246, 0.14)", fg: "#1d4ed8" },
+    ACTIVE: {
+        bg: "var(--dashboard-success-soft, rgba(16, 185, 129, 0.12))",
+        fg: "var(--dashboard-success, #047857)",
+    },
+    INACTIVE: {
+        bg: "color-mix(in srgb, var(--dashboard-muted) 16%, transparent)",
+        fg: "var(--dashboard-muted, #475569)",
+    },
+    SUSPENDED: {
+        bg: "var(--dashboard-warning-soft, rgba(245, 158, 11, 0.16))",
+        fg: "var(--dashboard-warning, #b45309)",
+    },
+    TERMINATED: {
+        bg: "color-mix(in srgb, var(--dashboard-danger, #dc2626) 14%, transparent)",
+        fg: "var(--dashboard-danger, #b91c1c)",
+    },
+    ARCHIVED: {
+        bg: "color-mix(in srgb, var(--dashboard-muted) 18%, transparent)",
+        fg: "var(--dashboard-muted, #334155)",
+    },
+    PENDING_APPROVAL: {
+        bg: "var(--role-accent-soft)",
+        fg: "var(--role-accent)",
+    },
 };
 
 export function LifecycleBadge({ status }) {
@@ -58,9 +84,11 @@ export function Banner({ tone = "info", children, onDismiss }) {
             style={
                 isError
                     ? {
-                          borderColor: "#fecaca",
-                          backgroundColor: "rgba(254, 226, 226, 0.6)",
-                          color: "#b91c1c",
+                          borderColor:
+                              "color-mix(in srgb, var(--dashboard-danger, #dc2626) 40%, transparent)",
+                          backgroundColor:
+                              "color-mix(in srgb, var(--dashboard-danger, #dc2626) 12%, transparent)",
+                          color: "var(--dashboard-danger, #b91c1c)",
                       }
                     : {
                           borderColor: "var(--dashboard-border)",
@@ -200,8 +228,9 @@ export const btnPrimary = {
 };
 
 export const btnDanger = {
-    borderColor: "#fecaca",
-    color: "#b91c1c",
+    borderColor:
+        "color-mix(in srgb, var(--dashboard-danger, #dc2626) 40%, transparent)",
+    color: "var(--dashboard-danger, #b91c1c)",
 };
 
 export const btnNeutral = {

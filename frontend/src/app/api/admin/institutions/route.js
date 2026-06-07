@@ -1,12 +1,11 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/auth";
+import { auth } from "@/auth";
 
 const BACKEND = () =>
     process.env.NEXT_PUBLIC_BACKEND || "http://localhost:4000";
 
 async function forward(method, path, body) {
-    const session = await getServerSession(authOptions);
+    const session = await auth();
     if (!session) {
         return NextResponse.json(
             { error: "Authentication required" },

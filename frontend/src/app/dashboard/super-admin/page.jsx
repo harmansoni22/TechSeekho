@@ -5,16 +5,15 @@ import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { fetchAuditLogs } from "@/features/dashboard/api/superAdmin.api";
-import {
-    PageError,
-    PageLoading,
-} from "@/features/dashboard/components/ui/widgets/PageState";
-import Panel from "@/features/dashboard/components/ui/widgets/Panel";
 import { NAV_CONFIG } from "@/features/dashboard/config/navConfig";
 import {
+    SaPageHeader,
+    SaPanel,
+    SaPageLoading,
+    SaPageError,
     extractErrorMessage,
     LifecycleBadge,
-} from "@/features/dashboard/super-admin/governanceShared";
+} from "@/features/dashboard/super-admin/components";
 
 /**
  * SUPER_ADMIN Overview — operational governance command center.
@@ -53,8 +52,8 @@ const SEVERITY_TONES = {
     },
     warning: {
         label: "Warning",
-        fg: "#b45309",
-        bg: "rgba(245, 158, 11, 0.16)",
+        fg: "var(--dashboard-warning, #b45309)",
+        bg: "var(--dashboard-warning-soft, rgba(245, 158, 11, 0.16))",
     },
     info: {
         label: "Heads up",
@@ -63,8 +62,8 @@ const SEVERITY_TONES = {
     },
     ok: {
         label: "Stable",
-        fg: "#047857",
-        bg: "rgba(16, 185, 129, 0.12)",
+        fg: "var(--dashboard-success, #047857)",
+        bg: "var(--dashboard-success-soft, rgba(16, 185, 129, 0.12))",
     },
 };
 
@@ -290,23 +289,6 @@ function Icon({ path, className = "h-4 w-4" }) {
     );
 }
 
-function StatusChip({ tone, label }) {
-    const t = SEVERITY_TONES[tone] ?? SEVERITY_TONES.ok;
-    return (
-        <span
-            className="inline-flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider"
-            style={{ backgroundColor: t.bg, color: t.fg }}
-        >
-            <span
-                className="h-1.5 w-1.5 rounded-full"
-                style={{ backgroundColor: t.fg }}
-                aria-hidden="true"
-            />
-            {label}
-        </span>
-    );
-}
-
 // Compact, clickable summary stat for the header bar.
 function HeaderMetric({ label, value, tone = "ok", href }) {
     const t = SEVERITY_TONES[tone] ?? SEVERITY_TONES.ok;
@@ -396,7 +378,7 @@ function PrimaryAction({ action }) {
     return (
         <Link
             href={action.href}
-            className="group flex items-center gap-3 rounded-xl border px-4 py-3.5 transition-all hover:-translate-y-[2px]"
+            className="group flex items-center gap-3 rounded-lg border px-4 py-3.5 transition-all hover:-translate-y-[2px]"
             style={{
                 borderColor: "var(--dashboard-border)",
                 backgroundColor: "var(--dashboard-surface)",
@@ -442,6 +424,16 @@ function SnapshotTile({ tile }) {
     const icon = tile.icon ?? NAV_ICONS[tile.href];
     const inner = (
         <>
+            {/* SA signature: persistent left accent rule, tinted by severity */}
+            <span
+                className="pointer-events-none absolute inset-y-3 left-0 w-[2px] rounded-full"
+                style={{
+                    backgroundColor: tile.boundary
+                        ? "var(--dashboard-border)"
+                        : tone.fg,
+                }}
+                aria-hidden="true"
+            />
             <div className="flex items-center justify-between gap-2">
                 <span
                     className="inline-flex h-7 w-7 items-center justify-center rounded-md"
@@ -478,6 +470,7 @@ function SnapshotTile({ tile }) {
                         : showValueTone
                           ? tone.fg
                           : "var(--dashboard-fg)",
+                    fontVariantNumeric: "tabular-nums",
                 }}
             >
                 {tile.boundary ? "—" : tile.value}
@@ -491,7 +484,7 @@ function SnapshotTile({ tile }) {
         </>
     );
     const className =
-        "flex flex-col rounded-xl border px-4 py-3 transition-all hover:-translate-y-[2px]";
+        "relative flex flex-col overflow-hidden rounded-lg border py-3 pl-5 pr-4 transition-all hover:-translate-y-[2px]";
     const style = {
         borderColor: "var(--dashboard-border)",
         backgroundColor: "var(--dashboard-surface)",
@@ -519,20 +512,6 @@ function RiskChip({ risk }) {
             style={{ backgroundColor: tone.bg, color: tone.fg }}
         >
             {risk.label}
-        </span>
-    );
-}
-
-// Boundary cell: the backend has no per-institution attendance / admin-activity
-// feed yet, so render an explicit unavailable marker rather than a fake value.
-function PendingCell() {
-    return (
-        <span
-            className="text-xs"
-            style={{ color: "var(--dashboard-muted)" }}
-            title="Live reporting feed pending"
-        >
-            —
         </span>
     );
 }
@@ -582,9 +561,11 @@ function InlineError({ message, onRetry }) {
             <div
                 className="flex items-center justify-between gap-3 rounded-md border px-4 py-3 text-sm"
                 style={{
-                    borderColor: "#fecaca",
-                    backgroundColor: "rgba(254, 226, 226, 0.6)",
-                    color: "#b91c1c",
+                    borderColor:
+                        "color-mix(in srgb, var(--dashboard-danger, #dc2626) 40%, transparent)",
+                    backgroundColor:
+                        "color-mix(in srgb, var(--dashboard-danger, #dc2626) 12%, transparent)",
+                    color: "var(--dashboard-danger, #b91c1c)",
                 }}
             >
                 <span>{message}</span>
@@ -830,13 +811,56 @@ const SuperAdminOverview = () => {
             );
     }, [institutions]);
 
+    // Counterweight to the watchlist: institutions delivering well. Same data,
+    // opposite end — ACTIVE with live cohorts, ranked by engagement (batches +
+    // members). Surfacing the top delivers trainer accountability: a school
+    // running strong is a trainer running strong. Attendance/completion columns
+    // stay an honest "pending" until the per-institution feed lands, exactly as
+    // the watchlist does.
+    const performers = useMemo(() => {
+        const list = Array.isArray(institutions) ? institutions : [];
+        return list
+            .map((inst) => {
+                const st = getInstStatus(inst);
+                const batchCount = inst.batches?.length ?? inst.batchCount ?? 0;
+                const memberCount =
+                    inst.memberCount ?? inst._count?.members ?? null;
+                const score = batchCount + (memberCount ?? 0);
+                return { inst, status: st, batchCount, memberCount, score };
+            })
+            .filter((row) => row.status === "ACTIVE" && row.batchCount > 0)
+            .sort((a, b) => b.score - a.score)
+            .slice(0, 5)
+            .map((row, idx) => ({
+                ...row,
+                standing:
+                    idx === 0
+                        ? { label: "Top", severity: "ok" }
+                        : { label: "Strong", severity: "ok" },
+            }));
+    }, [institutions]);
+
+    // Snapshot tiles are noise when empty. The rule is purely value-driven: a
+    // tile shows iff it carries a real number > 0. Zeros and not-yet-wired
+    // ("pending") tiles stay hidden — but the instant any tile crosses 0 (data
+    // arrives) it surfaces automatically, no boundary special-casing. If
+    // nothing qualifies, the whole panel is hidden downstream.
+    const visibleSnapshot = useMemo(
+        () =>
+            snapshot.filter(
+                (tile) =>
+                    typeof tile.value === "number" && tile.value > 0,
+            ),
+        [snapshot],
+    );
+
     if (status === "loading" || (loading && !overview)) {
-        return <PageLoading label="Loading command center" />;
+        return <SaPageLoading label="Loading command center" />;
     }
 
     if (error && !overview) {
         return (
-            <PageError
+            <SaPageError
                 title="Could not load the command center"
                 message={error}
                 onRetry={loadOverview}
@@ -846,44 +870,18 @@ const SuperAdminOverview = () => {
 
     return (
         <div className="space-y-5">
-            {/* Compact governance status bar — merges hero + top-bar so the
-                attention feed sits near the top of the viewport. */}
-            <header
-                className="rounded-xl border"
-                style={{
-                    borderColor: "var(--dashboard-border)",
-                    backgroundColor: "var(--dashboard-surface)",
-                    boxShadow: "var(--dashboard-shadow)",
+            {/* Command masthead — SA-owned header (accent spine + dense status
+                bar). Carries the governance state chip, the two at-a-glance
+                decision counts, and the refresh control. */}
+            <SaPageHeader
+                eyebrow="Platform governance · Super Admin"
+                title="Command center"
+                status={{
+                    tone: governanceStatus.tone,
+                    label: governanceStatus.label,
                 }}
-            >
-                <div className="flex flex-wrap items-center justify-between gap-4 px-5 py-4 md:px-6">
-                    <div className="flex min-w-0 items-center gap-3">
-                        {/* <span
-                            className="dash-live-dot inline-flex h-2 w-2 shrink-0 rounded-full"
-                            style={{ backgroundColor: "var(--role-accent)" }}
-                            aria-hidden="true"
-                        /> */}
-                        <div className="min-w-0">
-                            <p
-                                className="text-[10px] uppercase tracking-[0.22em]"
-                                style={{ color: "var(--role-accent)" }}
-                            >
-                                Platform governance · Super Admin
-                            </p>
-                            <h1
-                                className="font-display text-lg leading-tight md:text-xl"
-                                style={{ color: "var(--dashboard-fg)" }}
-                            >
-                                Command center
-                            </h1>
-                        </div>
-                        <StatusChip
-                            tone={governanceStatus.tone}
-                            label={governanceStatus.label}
-                        />
-                    </div>
-
-                    <div className="flex flex-wrap items-center gap-2 md:gap-3">
+                actions={
+                    <>
                         <HeaderMetric
                             label="Open alerts"
                             value={signals.length}
@@ -898,34 +896,33 @@ const SuperAdminOverview = () => {
                             tone="warning"
                             href="/dashboard/super-admin/institution-lifecycle"
                         />
-                        <div className="flex flex-col items-end gap-1.5 pl-1">
-                            <span
-                                className="text-[10px] uppercase tracking-[0.16em]"
-                                style={{ color: "var(--dashboard-muted)" }}
-                            >
-                                Updated {formatStamp(overview?.generatedAt)}
-                            </span>
-                            <button
-                                type="button"
-                                onClick={refreshAll}
-                                className="rounded-md border px-3 py-1 text-xs font-medium"
-                                style={{
-                                    borderColor: "var(--dashboard-border)",
-                                    color: "var(--dashboard-fg)",
-                                    backgroundColor: "var(--dashboard-surface)",
-                                    cursor: "pointer",
-                                }}
-                            >
-                                Refresh
-                            </button>
-                        </div>
+                    </>
+                }
+                meta={
+                    <div className="flex items-center gap-3">
+                        <span className="uppercase tracking-[0.16em]">
+                            Updated {formatStamp(overview?.generatedAt)}
+                        </span>
+                        <button
+                            type="button"
+                            onClick={refreshAll}
+                            className="rounded-md border px-3 py-1 text-xs font-medium"
+                            style={{
+                                borderColor: "var(--dashboard-border)",
+                                color: "var(--dashboard-fg)",
+                                backgroundColor: "var(--dashboard-surface)",
+                                cursor: "pointer",
+                            }}
+                        >
+                            Refresh
+                        </button>
                     </div>
-                </div>
-            </header>
+                }
+            />
 
             {/* 1 — Requires attention (kept first). */}
             <section id="requires-attention" className="scroll-mt-24">
-                <Panel
+                <SaPanel
                     eyebrow="Requires attention"
                     title={
                         signals.length > 0
@@ -994,68 +991,29 @@ const SuperAdminOverview = () => {
                             ))}
                         </ul>
                     )}
-                </Panel>
+                </SaPanel>
             </section>
 
-            {/* 2 — Quick actions: primary grid + secondary row. */}
-            <Panel
-                eyebrow="Quick actions"
-                title="Operate the platform"
-                padded={false}
-            >
-                <div className="px-5 py-5">
-                    <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-                        {QUICK_ACTIONS_PRIMARY.map((action) => (
-                            <PrimaryAction key={action.href} action={action} />
+            {/* 3 — Operational snapshot. Only the tiles that carry an
+                actionable value render; if every count is zero/pending the
+                panel drops out entirely so the page never shows a wall of 0s. */}
+            {visibleSnapshot.length > 0 && (
+                <SaPanel
+                    eyebrow="Operational snapshot"
+                    title="Governance posture"
+                    description="Counts that drive a decision — tap any to drill in."
+                    padded={false}
+                >
+                    <div className="grid grid-cols-2 gap-3 px-5 py-5 md:grid-cols-3 lg:grid-cols-6">
+                        {visibleSnapshot.map((tile) => (
+                            <SnapshotTile key={tile.id} tile={tile} />
                         ))}
                     </div>
-                    <div
-                        className="mt-4 flex flex-wrap items-center gap-2 border-t pt-4"
-                        style={{ borderColor: "var(--dashboard-border)" }}
-                    >
-                        <span
-                            className="text-[10px] uppercase tracking-[0.16em]"
-                            style={{ color: "var(--dashboard-muted)" }}
-                        >
-                            More
-                        </span>
-                        {QUICK_ACTIONS_SECONDARY.map((action) => (
-                            <Link
-                                key={action.href}
-                                href={action.href}
-                                className="inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-medium transition-colors hover:bg-[var(--role-accent-soft)]"
-                                style={{
-                                    borderColor: "var(--dashboard-border)",
-                                    color: "var(--dashboard-fg)",
-                                }}
-                            >
-                                <Icon
-                                    path={NAV_ICONS[action.href]}
-                                    className="h-3.5 w-3.5"
-                                />
-                                {action.label}
-                            </Link>
-                        ))}
-                    </div>
-                </div>
-            </Panel>
-
-            {/* 3 — Operational snapshot (replaces vanity headline counts). */}
-            <Panel
-                eyebrow="Operational snapshot"
-                title="Governance posture"
-                description="Counts that drive a decision — tap any to drill in."
-                padded={false}
-            >
-                <div className="grid grid-cols-2 gap-3 px-5 py-5 md:grid-cols-3 lg:grid-cols-6">
-                    {snapshot.map((tile) => (
-                        <SnapshotTile key={tile.id} tile={tile} />
-                    ))}
-                </div>
-            </Panel>
+                </SaPanel>
+            )}
 
             {/* 5 — Institution watchlist (replaces recent institutions). */}
-            <Panel
+            <SaPanel
                 eyebrow="Institution watchlist"
                 title="Institutions needing attention"
                 padded={false}
@@ -1139,12 +1097,6 @@ const SuperAdminOverview = () => {
                                         Status
                                     </th>
                                     <th className="px-3 py-2.5 font-medium">
-                                        Attendance
-                                    </th>
-                                    <th className="px-3 py-2.5 font-medium">
-                                        Admin activity
-                                    </th>
-                                    <th className="px-3 py-2.5 font-medium">
                                         Risk
                                     </th>
                                 </tr>
@@ -1195,13 +1147,127 @@ const SuperAdminOverview = () => {
                                             />
                                         </td>
                                         <td className="px-3 py-3">
-                                            <PendingCell />
-                                        </td>
-                                        <td className="px-3 py-3">
-                                            <PendingCell />
-                                        </td>
-                                        <td className="px-3 py-3">
                                             <RiskChip risk={row.risk} />
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                )}
+            </SaPanel>
+
+            {/* 5b — Institutions doing great (counterweight to the watchlist).
+                Only rendered when there's at least one strong performer, in
+                keeping with the "no empty panels" rule. */}
+            {performers.length > 0 && (
+                <SaPanel
+                    eyebrow="Strong delivery"
+                    title="Institutions doing great"
+                    description="Active schools with running cohorts — strong delivery means accountable trainers."
+                    padded={false}
+                    actions={
+                        <Link
+                            href="/dashboard/super-admin/institutions"
+                            className="rounded-md border px-3 py-1.5 text-xs font-medium"
+                            style={{
+                                borderColor: "var(--dashboard-border)",
+                                color: "var(--dashboard-fg)",
+                            }}
+                        >
+                            All institutions →
+                        </Link>
+                    }
+                >
+                    <div className="overflow-x-auto">
+                        <table className="w-full min-w-[640px] border-collapse text-left">
+                            <thead>
+                                <tr
+                                    className="border-b text-[10px] uppercase tracking-[0.16em]"
+                                    style={{
+                                        borderColor: "var(--dashboard-border)",
+                                        color: "var(--dashboard-muted)",
+                                    }}
+                                >
+                                    <th className="px-5 py-2.5 font-medium">
+                                        Institution
+                                    </th>
+                                    <th className="px-3 py-2.5 font-medium">
+                                        Status
+                                    </th>
+                                    <th className="px-3 py-2.5 font-medium">
+                                        Cohorts
+                                    </th>
+                                    <th className="px-3 py-2.5 font-medium">
+                                        Standing
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {performers.map((row) => (
+                                    <tr
+                                        key={row.inst.id}
+                                        className="border-b transition-colors hover:bg-[var(--role-accent-soft)]"
+                                        style={{
+                                            borderColor:
+                                                "var(--dashboard-border)",
+                                        }}
+                                    >
+                                        <td className="px-5 py-3">
+                                            <Link
+                                                href={`/dashboard/super-admin/institutions/${row.inst.id}`}
+                                                className="block min-w-0"
+                                            >
+                                                <span
+                                                    className="block truncate text-sm font-semibold"
+                                                    style={{
+                                                        color: "var(--dashboard-fg)",
+                                                    }}
+                                                >
+                                                    {row.inst.name}
+                                                </span>
+                                                <span
+                                                    className="block truncate text-[11px]"
+                                                    style={{
+                                                        color: "var(--dashboard-muted)",
+                                                    }}
+                                                >
+                                                    {[
+                                                        row.inst.type,
+                                                        row.inst.city,
+                                                        row.inst.state,
+                                                    ]
+                                                        .filter(Boolean)
+                                                        .join(" · ") ||
+                                                        `${row.batchCount} cohorts`}
+                                                </span>
+                                            </Link>
+                                        </td>
+                                        <td className="px-3 py-3">
+                                            <LifecycleBadge
+                                                status={row.status}
+                                            />
+                                        </td>
+                                        <td
+                                            className="px-3 py-3 text-sm font-semibold"
+                                            style={{
+                                                color: "var(--dashboard-fg)",
+                                            }}
+                                        >
+                                            {row.batchCount}
+                                            {row.memberCount != null && (
+                                                <span
+                                                    className="ml-1 text-[11px] font-normal"
+                                                    style={{
+                                                        color: "var(--dashboard-muted)",
+                                                    }}
+                                                >
+                                                    · {row.memberCount} members
+                                                </span>
+                                            )}
+                                        </td>
+                                        <td className="px-3 py-3">
+                                            <RiskChip risk={row.standing} />
                                         </td>
                                     </tr>
                                 ))}
@@ -1211,15 +1277,61 @@ const SuperAdminOverview = () => {
                             className="px-5 py-2.5 text-[11px]"
                             style={{ color: "var(--dashboard-muted)" }}
                         >
-                            Attendance and admin-activity columns activate once
-                            the per-institution reporting feed is connected.
+                            Ranked by live cohorts. Attendance and
+                            trainer-performance columns activate once the
+                            per-institution reporting feed is connected.
                         </p>
                     </div>
-                )}
-            </Panel>
+                </SaPanel>
+            )}
+
+            {/* Quick actions — demoted below the signal + data sections. A
+                governance console reads situation first, then acts; these are
+                escape hatches, not the headline. */}
+            <SaPanel
+                eyebrow="Quick actions"
+                title="Operate the platform"
+                padded={false}
+            >
+                <div className="px-5 py-5">
+                    <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+                        {QUICK_ACTIONS_PRIMARY.map((action) => (
+                            <PrimaryAction key={action.href} action={action} />
+                        ))}
+                    </div>
+                    <div
+                        className="mt-4 flex flex-wrap items-center gap-2 border-t pt-4"
+                        style={{ borderColor: "var(--dashboard-border)" }}
+                    >
+                        <span
+                            className="text-[10px] uppercase tracking-[0.16em]"
+                            style={{ color: "var(--dashboard-muted)" }}
+                        >
+                            More
+                        </span>
+                        {QUICK_ACTIONS_SECONDARY.map((action) => (
+                            <Link
+                                key={action.href}
+                                href={action.href}
+                                className="inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-medium transition-colors hover:bg-[var(--role-accent-soft)]"
+                                style={{
+                                    borderColor: "var(--dashboard-border)",
+                                    color: "var(--dashboard-fg)",
+                                }}
+                            >
+                                <Icon
+                                    path={NAV_ICONS[action.href]}
+                                    className="h-3.5 w-3.5"
+                                />
+                                {action.label}
+                            </Link>
+                        ))}
+                    </div>
+                </div>
+            </SaPanel>
 
             {/* 6 — Recent governance activity (governance actions only). */}
-            <Panel
+            <SaPanel
                 eyebrow="Recent governance activity"
                 title="Who changed what"
                 padded={false}
@@ -1267,7 +1379,7 @@ const SuperAdminOverview = () => {
                         ))}
                     </ul>
                 )}
-            </Panel>
+            </SaPanel>
         </div>
     );
 };

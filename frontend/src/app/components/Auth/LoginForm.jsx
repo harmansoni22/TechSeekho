@@ -21,12 +21,78 @@ const fieldVariant = {
     },
 };
 
+const GENERIC_ERROR = "Something went wrong. Please try again.";
+
+// The backend only returns the OTP in the response when EXPOSE_OTP_IN_RESPONSE
+// is on (dev only). We still guard on NODE_ENV so a misconfigured prod backend
+// can never cause the code to be rendered in the browser.
+const IS_DEV = process.env.NODE_ENV !== "production";
+
+/**
+ * Convert a raw thrown error into a short, user-safe message.
+ * `api()` throws Error("API error <status>: <body>") and
+ * Error("Network error calling <url>: ...") — we never surface those verbatim.
+ * `context` lets us word the 401 differently for OTP-request vs. sign-in.
+ */
+const friendlyAuthError = (err, context = "login") => {
+    const raw = err?.message || "";
+
+    if (/network error/i.test(raw)) {
+        return "Can't reach the server. Check your connection and try again.";
+    }
+
+    const statusMatch = raw.match(/API error (\d+)/);
+    const status = statusMatch ? Number(statusMatch[1]) : null;
+
+    switch (status) {
+        case 400:
+            return "Bad request. Please check the details you entered and try again.";
+        case 401:
+            return context === "otp"
+                ? "Incorrect password. Please try again."
+                : "Incorrect credentials. Please try again.";
+        case 403:
+            return "This account doesn't have access. Contact your administrator.";
+        case 404:
+            return "No account found for those details.";
+        case 408:
+            return "The request timed out. Please try again.";
+        case 422:
+            return "Please check the details you entered and try again.";
+        case 429:
+            return "Too many attempts. Please wait a minute and try again.";
+        case 500:
+            return "Something went wrong on our end. Please try again shortly.";
+        case 501:
+            return "This action isn't supported right now. Please try again later.";
+        case 502:
+            return "We're getting an invalid response from the server. Please try again shortly.";
+        case 503:
+            return "The service is temporarily unavailable. Please try again shortly.";
+        case 504:
+            return "The server took too long to respond. Please try again shortly.";
+        case 505:
+            return "Your browser made an unsupported request. Try updating your browser.";
+        case 506:
+        case 507:
+        case 508:
+        case 510:
+            return "The server ran into a problem handling your request. Please try again later.";
+        case 511:
+            return "Network authentication is required. Check your connection and sign in to your network.";
+        default:
+            return GENERIC_ERROR;
+    }
+};
+
 const LoginForm = () => {
     const [identifier, setIdentifier] = useState("");
     const [otp, setOtp] = useState("");
     const [password, setPassword] = useState("");
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
+    const [message, setMessage] = useState("");
+    const [devOtp, setDevOtp] = useState("");
     const [showPassword, setShowPassword] = useState(false);
     const [otpRequested, setOtpRequested] = useState(false);
 
@@ -34,32 +100,76 @@ const LoginForm = () => {
     const searchParams = useSearchParams();
     const next = searchParams?.get("next");
 
-    const handleSubmit = async (e) => {
-        e.preventDefault();
+    const handleSendOtp = async () => {
         setError("");
 
-        const validation = validateLoginInput({ identifier, password });
+        const validation = validateLoginInput({
+            identifier,
+            password,
+        });
+
         if (!validation.isValid) {
             setError(validation.error);
             return;
         }
 
         setLoading(true);
-        try {
-            if (!otpRequested) {
-                const otpResponse = await api("/auth/login/request-otp", {
-                    method: "POST",
-                    body: JSON.stringify({ identifier, password }),
-                });
-                setOtpRequested(true);
-                setError(
-                    otpResponse.otp
-                        ? `OTP sent. Development OTP: ${otpResponse.otp}`
-                        : "OTP sent. Please enter the code to continue.",
-                );
-                return;
-            }
 
+        try {
+            const otpResponse = await api("/auth/login/request-otp", {
+                method: "POST",
+                body: JSON.stringify({
+                    identifier,
+                    password,
+                }),
+            });
+
+            setOtpRequested(true);
+
+            // No SMS/email provider is wired yet, so in dev the backend returns
+            // the OTP in the response. Surface it in the UI instead of the
+            // console — but only in development, never in production.
+            const inlineOtp = IS_DEV && otpResponse.otp ? otpResponse.otp : "";
+            setDevOtp(inlineOtp);
+            setMessage(
+                inlineOtp
+                    ? "OTP delivery isn't set up yet — use the code shown below."
+                    : "OTP sent. Please enter the code."
+            );
+        } catch (err) {
+            setError(friendlyAuthError(err, "otp"));
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        setError("");
+
+        const validation = validateLoginInput({
+            identifier,
+            password,
+        });
+
+        if (!validation.isValid) {
+            setError(validation.error);
+            return;
+        }
+
+        if (!otpRequested) {
+            setError("Please send OTP first.");
+            return;
+        }
+
+        if (!otp.trim()) {
+            setError("Please enter OTP.");
+            return;
+        }
+
+        setLoading(true);
+
+        try {
             const result = await signIn("credentials", {
                 identifier,
                 password,
@@ -67,24 +177,20 @@ const LoginForm = () => {
                 redirect: false,
             });
 
-            if (result.error) {
-                throw new Error(result.error || "Login failed");
+            if (result?.error) {
+                // NextAuth surfaces the backend reason as a raw string here;
+                // keep it generic instead of leaking it to the user.
+                setError("Incorrect OTP or credentials. Please try again.");
+                return;
             }
 
             const session = await getSession();
             const roles = session?.user?.roles ?? [];
             const roleDestination = resolveRoleDestination(roles);
 
-            if (!roleDestination && roles.length === 0) {
-                // Session not yet populated — fall through to /dashboard which will re-resolve.
-                console.warn(
-                    "[LoginForm] Session roles empty after signIn, falling back to /dashboard",
-                );
-            }
-
             router.push(next || roleDestination || "/dashboard");
         } catch (err) {
-            setError(err.message || "Login failed. Try again.");
+            setError(friendlyAuthError(err, "otp"));
         } finally {
             setLoading(false);
         }
@@ -290,57 +396,64 @@ const LoginForm = () => {
                     </div>
                 </motion.div>
 
-                {otpRequested && (
-                    <motion.div
-                        variants={fieldVariant}
-                        className="flex flex-col gap-1.5"
+                <motion.div variants={fieldVariant}>
+                    <button
+                        type="button"
+                        onClick={handleSendOtp}
+                        disabled={loading}
+                        className="w-full py-3.5 px-6 text-[0.92rem] font-medium text-white bg-white/[0.04] border border-white/10 rounded-xl transition-all duration-200 hover:bg-white/[0.08] hover:border-[#a78bfa]/40 disabled:opacity-70 disabled:cursor-not-allowed"
                     >
+                        {loading
+                            ? "Sending OTP..."
+                            : otpRequested
+                                ? "Resend OTP"
+                                : "Send OTP"}
+                    </button>
+                </motion.div>
+
+                {message && (
+                    <motion.div
+                        initial="hidden"
+                        animate="visible"
+                        variants={fieldVariant}
+                        className="flex flex-col gap-2 px-3.5 py-3 text-[0.8rem] text-emerald-300 bg-emerald-400/5 border border-emerald-400/15 rounded-lg"
+                    >
+                        <span>{message}</span>
+                        {devOtp && (
+                            <div className="flex items-center justify-between gap-3">
+                                <code className="text-[1.1rem] font-semibold tracking-[0.3em] text-white">
+                                    {devOtp}
+                                </code>
+                                <button
+                                    type="button"
+                                    onClick={() => setOtp(devOtp)}
+                                    className="text-[0.72rem] font-medium text-emerald-300 underline underline-offset-2 hover:text-emerald-200"
+                                >
+                                    Use code
+                                </button>
+                            </div>
+                        )}
+                    </motion.div>
+                )}
+
+                {otpRequested && (
+                    <div className="flex flex-col gap-1.5">
                         <label
                             className="text-[0.8rem] font-medium text-white/60"
                             htmlFor="login-otp"
                         >
                             OTP code
                         </label>
-                        <div className="relative flex items-center group">
-                            <span
-                                className="absolute left-3.5 flex text-white/20 pointer-events-none transition-colors duration-200 group-focus-within:text-[#a78bfa]/80"
-                                aria-hidden="true"
-                            >
-                                <svg
-                                    width="16"
-                                    height="16"
-                                    viewBox="0 0 24 24"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    strokeWidth="2"
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    aria-hidden="true"
-                                    focusable="false"
-                                >
-                                    <circle cx="12" cy="12" r="10" />
-                                    <path d="M9 12h6" />
-                                </svg>
-                            </span>
-                            <input
-                                id="login-otp"
-                                type="text"
-                                name="login_user_otp"
-                                value={otp}
-                                onChange={(e) => setOtp(e.target.value)}
-                                placeholder="Enter 6-digit code"
-                                className="w-full py-3.5 px-4 pl-11 text-[0.875rem] text-white bg-white/[0.04] border border-white/10 rounded-xl outline-none transition-all duration-200 placeholder:text-white/20 focus:bg-white/[0.06] focus:border-[#a78bfa]/40 focus:ring-[3px] focus:ring-[#a78bfa]/10 focus:shadow-[0_8px_30px_rgba(0,0,0,0.2)]"
-                                autoComplete="one-time-code"
-                                autoCapitalize="none"
-                                autoCorrect="off"
-                                spellCheck={false}
-                                maxLength={6}
-                                inputMode="numeric"
-                                data-lpignore="true"
-                                data-1p-ignore="true"
-                            />
-                        </div>
-                    </motion.div>
+
+                        <input
+                            id="login-otp"
+                            type="text"
+                            value={otp}
+                            onChange={(e) => setOtp(e.target.value)}
+                            placeholder="Enter 6-digit code"
+                            className="w-full py-3.5 px-4 text-white bg-white/[0.04] border border-white/10 rounded-xl"
+                        />
+                    </div>
                 )}
 
                 {error && (
@@ -368,24 +481,17 @@ const LoginForm = () => {
                     </motion.div>
                 )}
 
-                <motion.div variants={fieldVariant}>
-                    <button
-                        type="submit"
-                        className="relative flex items-center justify-center gap-2 w-full py-3.5 px-6 text-[0.92rem] font-semibold text-white bg-gradient-to-r from-[#7c3aed] via-[#6366f1] to-[#4f46e5] rounded-xl cursor-pointer transition-all duration-300 overflow-hidden hover:-translate-y-0.5 hover:shadow-[0_3px_5px_rgba(99,102,241,0.35),0_0_60px_rgba(99,102,241,0.1)] hover:bg-gradient-to-r hover:from-[#6d28d9] hover:via-[#4f46e5] hover:to-[#4338ca] disabled:opacity-70 disabled:cursor-not-allowed group"
-                        disabled={loading}
-                    >
-                        <div
-                            className="absolute inset-0 bg-white/10 opacity-0 transition-opacity duration-300 group-hover:opacity-100"
-                            aria-hidden="true"
-                        />
-                        {loading ? (
-                            <span className="w-4 h-4 border-[2px] border-white/30 border-t-white rounded-full animate-spin" />
-                        ) : null}
-                        <span className="relative z-10">
-                            {loading ? "Signing in..." : "Sign in"}
-                        </span>
-                    </button>
-                </motion.div>
+                {otpRequested && (
+                    <div>
+                        <button
+                            type="submit"
+                            className="relative flex items-center justify-center gap-2 w-full py-3.5 px-6 text-[0.92rem] font-semibold text-white bg-gradient-to-r from-[#7c3aed] via-[#6366f1] to-[#4f46e5] rounded-xl cursor-pointer transition-all duration-300 overflow-hidden hover:-translate-y-0.5 disabled:opacity-70 disabled:cursor-not-allowed"
+                            disabled={loading}
+                        >
+                            {loading ? "Verifying..." : "Verify & Sign In"}
+                        </button>
+                    </div>
+                )}
 
                 <motion.p
                     variants={fieldVariant}

@@ -90,6 +90,9 @@ const cookiePrefix = isSecureCookies ? "__Secure-" : "";
 
 const authOptions = {
     secret: process.env.NEXTAUTH_SECRET,
+    // Self-hosted on techseekho subdomains (not Vercel), so Auth.js v5 needs to
+    // be told the Host header is trustworthy or it throws UntrustedHost in prod.
+    trustHost: true,
     session: { strategy: "jwt" },
     pages: {
         signIn: "/login",
@@ -302,13 +305,7 @@ const authOptions = {
     },
 };
 
-const nextAuthHandler = NextAuth(authOptions);
-
-export const handlers = { GET: nextAuthHandler, POST: nextAuthHandler };
-
-export async function auth() {
-    const { getServerSession } = await import("next-auth/next");
-    return await getServerSession(authOptions);
-}
-
-export { authOptions };
+// Auth.js v5 factory: `handlers` wires the [...nextauth] route, `auth` is the
+// universal server-side session getter (server components, route handlers,
+// middleware), and `signIn`/`signOut` are the server actions.
+export const { handlers, auth, signIn, signOut } = NextAuth(authOptions);
