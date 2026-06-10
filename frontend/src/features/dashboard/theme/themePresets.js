@@ -30,9 +30,9 @@ export const dashboardThemes = {
         label: "Dark normal",
         mode: "dark",
         tokens: {
-            background: "#0b1220",
+            background: "#050507",
             foreground: "#e2e8f0",
-            surface: "#111b2e",
+            surface: "#121314",
             muted: "#94a3b8",
             border: "#22304a",
             primary: "#dbeafe",
@@ -157,6 +157,25 @@ export const dashboardThemes = {
             dangerForeground: "#ffffff",
             shadow: "0 12px 24px rgba(234, 88, 12, 0.15)",
         },
+    },
+
+    lightPink: {
+        label: "Light Pink",
+        mode: "light",
+        tokens: {
+            background: "#ffedfd",
+            foreground: "#7c2d12",
+            surface: "#ffffff",
+            muted: "#9a3412",
+            border: "#fed7aa",
+            primary: "#ff67ba",
+            primaryForeground: "#ffffff",
+            accent: "#ff44e3",
+            accentForeground: "#ffffff",
+            danger: "#dc2626",
+            dangerForeground: "#ffffff",
+            shadow: "0 12px 24px rgba(234, 88, 12, 0.15)",
+        }
     },
 
     graphite: {
